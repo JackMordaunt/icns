@@ -6,7 +6,8 @@
 // a Mac native cli utility, or 2. use tools that wrap `ImageMagick` which adds
 // a large dependency to your project for such a simple use case.
 //
-// Note: All icons within the icns are sized for high dpi retina screens.
+// Note: All icons within the icns are sized for high dpi retina screens, using
+// the appropriate icns OSTypes.
 //
 // Todo(jackmordaunt):
 // - Write tests (only manual testing has been done)
