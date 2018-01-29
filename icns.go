@@ -11,9 +11,6 @@ import (
 // img is assumed to be a rectangle; non-square dimensions will be squared
 // without preserving the aspect ratio.
 // Uses nearest neighbor as interpolation algorithm.
-//
-// Note, Todo(jackmordaunt): The underlying image encoding used for the icons
-// is png, resulting in a lossy conversion if the source image is jpg.
 func Encode(wr io.Writer, img image.Image) error {
 	iconset, err := NewIconSet(img, NearestNeighbor)
 	if err != nil {

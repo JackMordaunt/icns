@@ -14,5 +14,4 @@
 // - Create Decoder (.icns -> image.Image)
 // - Encode based on input image format (jpg -> jpg, png -> png) to avoid
 // 	lossy conversions
-// - Allow configuraton of resize algorithm
 package icns
