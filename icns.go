@@ -10,11 +10,12 @@ import (
 // Encode writes img to wr in ICNS format.
 // img is assumed to be a rectangle; non-square dimensions will be squared
 // without preserving the aspect ratio.
+// Uses nearest neighbor as interpolation algorithm.
 //
 // Note, Todo(jackmordaunt): The underlying image encoding used for the icons
 // is png, resulting in a lossy conversion if the source image is jpg.
 func Encode(wr io.Writer, img image.Image) error {
-	iconset, err := NewIconSet(img)
+	iconset, err := NewIconSet(img, NearestNeighbor)
 	if err != nil {
 		return err
 	}
@@ -25,13 +26,13 @@ func Encode(wr io.Writer, img image.Image) error {
 }
 
 // NewIconSet uses the source image to create an IconSet.
-// If width != height, the shortest side will be padded with transparent pixels
-// to make the icon a square.
-func NewIconSet(img image.Image) (*IconSet, error) {
+// If width != height, the image will be resized using the largest side without
+// preserving the aspect ratio.
+func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error) {
 	biggest := findNearestSize(img)
 	icons := []*Icon{}
 	for _, size := range sizesFrom(biggest) {
-		iconImg := resize.Resize(size, size, img, resize.NearestNeighbor)
+		iconImg := resize.Resize(size, size, img, interp)
 		icon := &Icon{
 			Type:  getType(size),
 			Image: iconImg,
