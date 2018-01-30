@@ -13,6 +13,7 @@
 // - Write tests (only manual testing has been done)
 // 	- How to test the correctness of a file format?
 // - Create Decoder (.icns -> image.Image)
+//	- Register decoder to image.Decode in init func
 // - Encode based on input image format (jpg -> jpg, png -> png) to avoid
 // 	lossy conversions
 package icns
