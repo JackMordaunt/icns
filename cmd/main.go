@@ -19,9 +19,10 @@ func main() {
 	var (
 		input  = pflag.StringP("input", "i", "", "Input image for conversion to icns (jpg|png)")
 		output = pflag.StringP("output", "o", "", "Output path, defaults to <path/to/image>.icns")
+		resize = pflag.IntP("resize", "r", 5, "Quality of resize algorithm. Values range from 0 to 5, fastest to highest quality. Defaults to highest quality.")
 	)
 	pflag.Parse()
-	in, out := validate(*input, *output)
+	in, out, algorithm := sanitiseInputs(*input, *output, *resize)
 	sourcef, err := fs.Open(in)
 	if err != nil {
 		log.Fatalf("opening source image: %v", err)
@@ -31,17 +32,28 @@ func main() {
 	if err != nil {
 		log.Fatalf("decoding image: %v", err)
 	}
+	if err := fs.MkdirAll(filepath.Dir(out), 0755); err != nil {
+		log.Fatalf("preparing output directory: %v", err)
+	}
 	outputf, err := fs.Create(out)
 	if err != nil {
 		log.Fatalf("creating icns file: %v", err)
 	}
 	defer outputf.Close()
-	if err := icns.Encode(outputf, img); err != nil {
-		log.Fatalf("encoding icns")
+	if err := icns.EncodeWithInterpolationFunction(
+		outputf,
+		img,
+		algorithm,
+	); err != nil {
+		log.Fatalf("encoding icns: %v", err)
 	}
 }
 
-func validate(inputPath, outputPath string) (string, string) {
+func sanitiseInputs(
+	inputPath string,
+	outputPath string,
+	resize int,
+) (string, string, icns.InterpolationFunction) {
 	if inputPath == "" {
 		pflag.Usage()
 		os.Exit(0)
@@ -52,7 +64,13 @@ func validate(inputPath, outputPath string) (string, string) {
 	if filepath.Ext(outputPath) == "" {
 		outputPath += ".icns"
 	}
-	return inputPath, outputPath
+	if resize < 0 {
+		resize = 0
+	}
+	if resize > 5 {
+		resize = 5
+	}
+	return inputPath, outputPath, icns.InterpolationFunction(resize)
 }
 
 func changeExtensionTo(path, ext string) string {
