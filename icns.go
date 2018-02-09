@@ -98,6 +98,9 @@ func sizesFrom(max uint) []uint {
 	return nil
 }
 
+// OsType is a 4 character identifier used to differentiate icon types.
+type OsType string
+
 // getType returns the type for the given icon size (in px).
 // The boolean indicates whether the type exists.
 func getType(size uint) (OsType, bool) {

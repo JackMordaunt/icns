@@ -7,9 +7,6 @@ import (
 	"io"
 )
 
-// OsType is a 4 character identifier used to differentiate icon types.
-type OsType string
-
 // Icon encodes an icns icon.
 type Icon struct {
 	Type  OsType
