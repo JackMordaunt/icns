@@ -12,7 +12,7 @@ func TestSizesFromMax(t *testing.T) {
 	tests := []struct {
 		desc string
 		from uint
-		want []uint ``
+		want []uint
 	}{
 		{
 			"small",
