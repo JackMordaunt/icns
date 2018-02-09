@@ -32,9 +32,13 @@ func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error)
 	}
 	icons := []*Icon{}
 	for _, size := range sizesFrom(biggest) {
+		t, ok := getType(size)
+		if !ok {
+			continue
+		}
 		iconImg := resize.Resize(size, size, img, interp)
 		icon := &Icon{
-			Type:  getType(size),
+			Type:  t,
 			Image: iconImg,
 		}
 		icons = append(icons, icon)
@@ -94,21 +98,17 @@ func sizesFrom(max uint) []uint {
 	return nil
 }
 
-var types = map[uint]OsType{
-	1024: "ic10",
-	512:  "ic14",
-	256:  "ic13",
-	128:  "ic07",
-	64:   "ic12",
-	32:   "ic11",
-}
-
-// should this return error, panic or return a default (but probably incorrect)
-// format? For now, failing explicitly is preferable to failing silently.
-func getType(size uint) OsType {
-	v, ok := types[size]
-	if !ok {
-		panicf("could not select the correct icon type for size %d", size)
+// getType returns the type for the given icon size (in px).
+// The boolean indicates whether the type exists.
+func getType(size uint) (OsType, bool) {
+	types := map[uint]OsType{
+		1024: "ic10",
+		512:  "ic14",
+		256:  "ic13",
+		128:  "ic07",
+		64:   "ic12",
+		32:   "ic11",
 	}
-	return v
+	v, ok := types[size]
+	return v, ok
 }
