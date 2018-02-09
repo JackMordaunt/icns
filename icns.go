@@ -84,10 +84,10 @@ func biggestSide(img image.Image) uint {
 	return size
 }
 
-// returns a slice containing the sizes less than and including max.
+// sizesFrom returns a slice containing the sizes less than and including max.
 func sizesFrom(max uint) []uint {
 	for ii, s := range sizes {
-		if s == max {
+		if s <= max {
 			return sizes[ii:len(sizes)]
 		}
 	}
