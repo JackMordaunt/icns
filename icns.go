@@ -27,6 +27,9 @@ func Encode(wr io.Writer, img image.Image) error {
 // preserving the aspect ratio.
 func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error) {
 	biggest := findNearestSize(img)
+	if biggest == 0 {
+		return nil, ErrImageTooSmall{image: img, need: 16}
+	}
 	icons := []*Icon{}
 	for _, size := range sizesFrom(biggest) {
 		iconImg := resize.Resize(size, size, img, interp)
@@ -63,7 +66,7 @@ var sizes = []uint{
 func findNearestSize(img image.Image) uint {
 	size := biggestSide(img)
 	for _, s := range sizes {
-		if size > s {
+		if size >= s {
 			return s
 		}
 	}
@@ -105,7 +108,7 @@ var types = map[uint]OsType{
 func getType(size uint) OsType {
 	v, ok := types[size]
 	if !ok {
-		panic("could not select the correct icon type")
+		panicf("could not select the correct icon type for size %d", size)
 	}
 	return v
 }
