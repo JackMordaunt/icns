@@ -8,11 +8,4 @@
 //
 // Note: All icons within the icns are sized for high dpi retina screens, using
 // the appropriate icns OSTypes.
-//
-// Todo(jackmordaunt):
-// - Write tests (only manual testing has been done)
-// 	- How to test the correctness of a file format?
-// - Create Decoder (.icns -> image.Image)
-// - Encode based on input image format (jpg -> jpg, png -> png) to avoid
-// 	lossy conversions
 package icns
