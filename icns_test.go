@@ -2,10 +2,84 @@ package icns
 
 import (
 	"image"
+	"io"
+	"io/ioutil"
 	"testing"
 
 	"github.com/jackmordaunt/deep"
 )
+
+// TestEncode tests for input validation, sanity checks and errors.
+// The validity of the encoding is not tested here.
+// Super large images are not tested because the resizing takes too
+// long for unit testing.
+func TestEncode(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		desc string
+		wr   io.Writer
+		img  image.Image
+
+		wantErr bool
+	}{
+		{
+			"nil image",
+			ioutil.Discard,
+			nil,
+			true,
+		},
+		{
+			"nil writer",
+			nil,
+			rect(0, 0, 50, 50),
+			true,
+		},
+		{
+			"valid sqaure",
+			ioutil.Discard,
+			rect(0, 0, 50, 50),
+			false,
+		},
+		{
+			"valid non-square",
+			ioutil.Discard,
+			rect(0, 0, 10, 50),
+			false,
+		},
+		{
+			"valid non-square, weird dimensions",
+			ioutil.Discard,
+			rect(0, 0, 17, 77),
+			false,
+		},
+		{
+			"invalid zero img",
+			ioutil.Discard,
+			rect(0, 0, 0, 0),
+			true,
+		},
+		{
+			"invalid small img",
+			ioutil.Discard,
+			rect(0, 0, 1, 1),
+			true,
+		},
+		{
+			"valid square not at origin point",
+			ioutil.Discard,
+			rect(10, 10, 50, 50),
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(st *testing.T) {
+			err := Encode(tt.wr, tt.img)
+			if !tt.wantErr && err != nil {
+				st.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
 
 func TestSizesFromMax(t *testing.T) {
 	t.Parallel()
