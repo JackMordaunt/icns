@@ -12,14 +12,7 @@ import (
 // without preserving the aspect ratio.
 // Uses nearest neighbor as interpolation algorithm.
 func Encode(wr io.Writer, img image.Image) error {
-	iconset, err := NewIconSet(img, NearestNeighbor)
-	if err != nil {
-		return err
-	}
-	if _, err := iconset.WriteTo(wr); err != nil {
-		return err
-	}
-	return nil
+	return EncodeWithInterpolationFunction(wr, img, NearestNeighbor)
 }
 
 // NewIconSet uses the source image to create an IconSet.

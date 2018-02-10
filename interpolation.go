@@ -1,6 +1,7 @@
 package icns
 
 import (
+	"errors"
 	"image"
 	"io"
 
@@ -33,6 +34,12 @@ func EncodeWithInterpolationFunction(
 	img image.Image,
 	interp InterpolationFunction,
 ) error {
+	if wr == nil {
+		return errors.New("cannot write to nil writer")
+	}
+	if img == nil {
+		return errors.New("cannot process nil image")
+	}
 	iconset, err := NewIconSet(img, interp)
 	if err != nil {
 		return err
