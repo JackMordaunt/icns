@@ -50,15 +50,14 @@ func main() {
 		defer outputf.Close()
 		output = outputf
 	}
-	img, _, err := image.Decode(input)
+	img, format, err := image.Decode(input)
 	if err != nil {
 		log.Fatalf("decoding image: %v", err)
 	}
-	if err := icns.EncodeWithInterpolationFunction(
-		output,
-		img,
-		algorithm,
-	); err != nil {
+	enc := icns.NewEncoder(output, img).
+		WithAlgorithm(algorithm).
+		WithFormat(format)
+	if err := enc.Encode(); err != nil {
 		log.Fatalf("encoding icns: %v", err)
 	}
 }
