@@ -8,41 +8,65 @@ import (
 	"github.com/nfnt/resize"
 )
 
-// Encode writes img to wr in ICNS format.
-// img is assumed to be a rectangle; non-square dimensions will be squared
-// without preserving the aspect ratio.
-// Uses nearest neighbor as interpolation algorithm.
-func Encode(wr io.Writer, img image.Image) error {
-	return EncodeWithInterpolationFunction(wr, img, NearestNeighbor)
+// Encoder encodes ICNS files from a source image.
+type Encoder struct {
+	wr        io.Writer
+	img       image.Image
+	algorithm InterpolationFunction
+	format    string
 }
 
-// EncodeWithInterpolationFunction uses the given interpolation function resize
-// the image before writing out to wr.
-func EncodeWithInterpolationFunction(
-	wr io.Writer,
-	img image.Image,
-	interp InterpolationFunction,
-) error {
-	if wr == nil {
+// NewEncoder initialises an encoder.
+func NewEncoder(wr io.Writer, img image.Image) *Encoder {
+	return &Encoder{
+		wr:  wr,
+		img: img,
+	}
+}
+
+// WithAlgorithm applies the interpolation function used to resize the image.
+func (enc *Encoder) WithAlgorithm(a InterpolationFunction) *Encoder {
+	enc.algorithm = a
+	return enc
+}
+
+// WithFormat applies the image format identifier used during registration by
+// image/png and image/jpeg packages.
+func (enc *Encoder) WithFormat(format string) *Encoder {
+	enc.format = format
+	return enc
+}
+
+// Encode icns with the given configuration.
+func (enc *Encoder) Encode() error {
+	if enc.wr == nil {
 		return errors.New("cannot write to nil writer")
 	}
-	if img == nil {
+	if enc.img == nil {
 		return errors.New("cannot process nil image")
 	}
-	iconset, err := NewIconSet(img, interp)
+	iconset, err := NewIconSet(enc.img, enc.algorithm, enc.format)
 	if err != nil {
 		return err
 	}
-	if _, err := iconset.WriteTo(wr); err != nil {
+	if _, err := iconset.WriteTo(enc.wr); err != nil {
 		return err
 	}
 	return nil
 }
 
+// Encode writes img to wr in ICNS format.
+// img is assumed to be a rectangle; non-square dimensions will be squared
+// without preserving the aspect ratio.
+// Uses nearest neighbor as interpolation algorithm.
+func Encode(wr io.Writer, img image.Image) error {
+	return NewEncoder(wr, img).Encode()
+}
+
 // NewIconSet uses the source image to create an IconSet.
 // If width != height, the image will be resized using the largest side without
 // preserving the aspect ratio.
-func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error) {
+func NewIconSet(img image.Image, interp InterpolationFunction, format string) (*IconSet, error) {
 	biggest := findNearestSize(img)
 	if biggest == 0 {
 		return nil, ErrImageTooSmall{image: img, need: 16}
@@ -55,8 +79,9 @@ func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error)
 		}
 		iconImg := resize.Resize(size, size, img, interp)
 		icon := &Icon{
-			Type:  t,
-			Image: iconImg,
+			Type:   t,
+			Image:  iconImg,
+			format: format,
 		}
 		icons = append(icons, icon)
 	}
