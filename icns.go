@@ -146,6 +146,15 @@ type OsType string
 // getType returns the type for the given icon size (in px).
 // The boolean indicates whether the type exists.
 func getType(size uint) (OsType, bool) {
+	// 'types' is a map of the OSTypes we care about.
+	// All dimensions are considered as retina.
+	//
+	// Todo(jackmordaunt): Not sure if only retina is sufficient. Should all
+	// types be handled? `iconutil` uses file names to determine whether a
+	// retina image is desired eg: "icon_256x256@2.png", without such a hint
+	// how can you disambiguate 256x256 standard vs 256x256 retina?
+	// Do we even need to consider standard sizes over retina?
+	// For now, just retina types are considered.
 	types := map[uint]OsType{
 		1024: "ic10",
 		512:  "ic14",
