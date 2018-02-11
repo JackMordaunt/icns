@@ -3,14 +3,16 @@ package icns
 import (
 	"bytes"
 	"image"
+	"image/jpeg"
 	"image/png"
 	"io"
 )
 
 // Icon encodes an icns icon.
 type Icon struct {
-	Type  OsType
-	Image image.Image
+	Type   OsType
+	Image  image.Image
+	format string
 
 	header    [8]byte
 	headerSet bool
@@ -20,7 +22,7 @@ type Icon struct {
 // WriteTo encodes the icon into wr.
 func (i *Icon) WriteTo(wr io.Writer) (int64, error) {
 	var written int64
-	if err := i.encodePng(); err != nil {
+	if err := i.encodeImage(); err != nil {
 		return written, err
 	}
 	size, err := i.writeHeader(wr)
@@ -36,13 +38,20 @@ func (i *Icon) WriteTo(wr io.Writer) (int64, error) {
 	return written, nil
 }
 
-func (i *Icon) encodePng() error {
+func (i *Icon) encodeImage() error {
 	if len(i.data) > 0 {
 		return nil
 	}
 	buf := bytes.NewBuffer(nil)
-	if err := png.Encode(buf, i.Image); err != nil {
-		return err
+	switch i.format {
+	case "jpeg":
+		if err := jpeg.Encode(buf, i.Image, nil); err != nil {
+			return err
+		}
+	default:
+		if err := png.Encode(buf, i.Image); err != nil {
+			return err
+		}
 	}
 	i.data = buf.Bytes()
 	return nil
