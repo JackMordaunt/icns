@@ -4,9 +4,26 @@ Easily convert `.jpg` and `.png` to `.icns` with the command line tool `icnsify`
 
 `go get github.com/jackmordaunt/icns`
 
-`icns` files allow for high resolution icons to make your apps look sexy. The most common ways to generate icns files are 1. use `iconutil` which is a Mac native cli utility, or 2. use tools that wrap `ImageMagick` which adds a large dependency to your project for such a simple use case.
+`icns` files allow for high resolution icons to make your apps look sexy. The most common ways to generate icns files are:
+
+1. `iconutil`, which is a Mac native cli utility.
+2. `ImageMagick` which adds a large dependency to your project for such a simple use case.
+
+With this library you can use pure Go to create `icns` files from any source image, given that you can decode it into an `image.Image`, without any heavyweight dependencies or subprocessing required. You can also use it to create icns files on windows and linux (thanks Go).
+
+A small CLI app `icnsify` is provided allowing you to create icns files using this library from the command line. It supports piping, which is something `iconutil` does not do, making it substantially easier to wrap or chuck into a shell pipeline.
 
 Note: All icons within the `icns` are sized for high dpi retina screens, using the appropriate `icns` OSTypes.
+
+## Command Line
+
+Pipe it
+
+`cat icon.png | icnsify | cat > icon.icns`
+
+Standard
+
+`icnsify -i icon.png -o icon.icns`
 
 ## Library Usage
 
@@ -41,4 +58,4 @@ func main() {
   * [ ] Decoding
 * [ ] Implement Decoder: `.icns -> image.Image`
 * [ ] Symmetric test: `decode(encode(img)) == img`
-* [ ] Encode based on input image format (jpg -> jpg, png -> png) to avoid lossy conversions
+* [x] Encode based on input image format (jpg -> jpg, png -> png) to avoid lossy conversions
