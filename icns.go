@@ -10,46 +10,46 @@ import (
 
 // Encoder encodes ICNS files from a source image.
 type Encoder struct {
-	wr        io.Writer
-	img       image.Image
-	algorithm InterpolationFunction
-	format    string
+	Wr          io.Writer
+	Image       image.Image
+	Algorithm   InterpolationFunction
+	ImageFormat string
 }
 
 // NewEncoder initialises an encoder.
 func NewEncoder(wr io.Writer, img image.Image) *Encoder {
 	return &Encoder{
-		wr:  wr,
-		img: img,
+		Wr:    wr,
+		Image: img,
 	}
 }
 
 // WithAlgorithm applies the interpolation function used to resize the image.
 func (enc *Encoder) WithAlgorithm(a InterpolationFunction) *Encoder {
-	enc.algorithm = a
+	enc.Algorithm = a
 	return enc
 }
 
 // WithFormat applies the image format identifier used during registration by
 // image/png and image/jpeg packages.
 func (enc *Encoder) WithFormat(format string) *Encoder {
-	enc.format = format
+	enc.ImageFormat = format
 	return enc
 }
 
 // Encode icns with the given configuration.
 func (enc *Encoder) Encode() error {
-	if enc.wr == nil {
+	if enc.Wr == nil {
 		return errors.New("cannot write to nil writer")
 	}
-	if enc.img == nil {
+	if enc.Image == nil {
 		return errors.New("cannot process nil image")
 	}
-	iconset, err := NewIconSet(enc.img, enc.algorithm, enc.format)
+	iconset, err := NewIconSet(enc.Image, enc.Algorithm, enc.ImageFormat)
 	if err != nil {
 		return err
 	}
-	if _, err := iconset.WriteTo(enc.wr); err != nil {
+	if _, err := iconset.WriteTo(enc.Wr); err != nil {
 		return err
 	}
 	return nil
