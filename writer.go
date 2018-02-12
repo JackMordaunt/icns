@@ -42,19 +42,27 @@ func (i *Icon) encodeImage() error {
 	if len(i.data) > 0 {
 		return nil
 	}
+	data, err := encodeImage(i.Image, i.format)
+	if err != nil {
+		return err
+	}
+	i.data = data
+	return nil
+}
+
+func encodeImage(img image.Image, format string) ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
-	switch i.format {
+	switch format {
 	case "jpeg":
-		if err := jpeg.Encode(buf, i.Image, nil); err != nil {
-			return err
+		if err := jpeg.Encode(buf, img, nil); err != nil {
+			return nil, err
 		}
 	default:
-		if err := png.Encode(buf, i.Image); err != nil {
-			return err
+		if err := png.Encode(buf, img); err != nil {
+			return nil, err
 		}
 	}
-	i.data = buf.Bytes()
-	return nil
+	return buf.Bytes(), nil
 }
 
 func (i *Icon) writeHeader(wr io.Writer) (int64, error) {
