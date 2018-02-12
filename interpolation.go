@@ -1,9 +1,6 @@
 package icns
 
 import (
-	"image"
-	"io"
-
 	"github.com/nfnt/resize"
 )
 
@@ -25,20 +22,3 @@ const (
 	// Lanczos interpolation (a=3)
 	Lanczos3
 )
-
-// EncodeWithInterpolationFunction uses the given interpolation function resize
-// the image before writing out to wr.
-func EncodeWithInterpolationFunction(
-	wr io.Writer,
-	img image.Image,
-	interp InterpolationFunction,
-) error {
-	iconset, err := NewIconSet(img, interp)
-	if err != nil {
-		return err
-	}
-	if _, err := iconset.WriteTo(wr); err != nil {
-		return err
-	}
-	return nil
-}
