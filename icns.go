@@ -10,17 +10,15 @@ import (
 
 // Encoder encodes ICNS files from a source image.
 type Encoder struct {
-	Wr          io.Writer
-	Image       image.Image
-	Algorithm   InterpolationFunction
-	ImageFormat string
+	Wr        io.Writer
+	Algorithm InterpolationFunction
+	Format    string
 }
 
 // NewEncoder initialises an encoder.
-func NewEncoder(wr io.Writer, img image.Image) *Encoder {
+func NewEncoder(wr io.Writer) *Encoder {
 	return &Encoder{
-		Wr:    wr,
-		Image: img,
+		Wr: wr,
 	}
 }
 
@@ -33,19 +31,19 @@ func (enc *Encoder) WithAlgorithm(a InterpolationFunction) *Encoder {
 // WithFormat applies the image format identifier used during registration by
 // image/png and image/jpeg packages.
 func (enc *Encoder) WithFormat(format string) *Encoder {
-	enc.ImageFormat = format
+	enc.Format = format
 	return enc
 }
 
 // Encode icns with the given configuration.
-func (enc *Encoder) Encode() error {
+func (enc *Encoder) Encode(img image.Image) error {
 	if enc.Wr == nil {
 		return errors.New("cannot write to nil writer")
 	}
-	if enc.Image == nil {
-		return errors.New("cannot process nil image")
+	if img == nil {
+		return errors.New("cannot encode nil image")
 	}
-	iconset, err := NewIconSet(enc.Image, enc.Algorithm, enc.ImageFormat)
+	iconset, err := NewIconSet(img, enc.Algorithm, enc.Format)
 	if err != nil {
 		return err
 	}
@@ -60,7 +58,7 @@ func (enc *Encoder) Encode() error {
 // without preserving the aspect ratio.
 // Uses nearest neighbor as interpolation algorithm.
 func Encode(wr io.Writer, img image.Image) error {
-	return NewEncoder(wr, img).Encode()
+	return NewEncoder(wr).Encode(img)
 }
 
 // NewIconSet uses the source image to create an IconSet.

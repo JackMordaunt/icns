@@ -54,10 +54,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("decoding image: %v", err)
 	}
-	enc := icns.NewEncoder(output, img).
+	enc := icns.NewEncoder(output).
 		WithAlgorithm(algorithm).
 		WithFormat(format)
-	if err := enc.Encode(); err != nil {
+	if err := enc.Encode(img); err != nil {
 		log.Fatalf("encoding icns: %v", err)
 	}
 }
