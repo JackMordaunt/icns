@@ -29,23 +29,23 @@ Standard
 
 ```go
 func main() {
-  pngf, err := os.Open("path/to/icon.png")
-  if err != nil {
-    log.Fatalf("opening source image: %v", err)
-  }
-  defer pngf.Close()
-  srcImg, _, err := image.Decode(pngf)
-  if err != nil {
-    log.Fatalf("decoding source image: %v", err)
-  }
-  dest, err := os.Create("path/to/icon.icns")
-  if err != nil {
-    log.Fatalf("opening destination file: %v", err)
-  }
-  defer dest.Close()
-  if err := icns.Encode(dest, srcImg); err != nil {
-    log.Fatalf("encoding icns: %v", err)
-  }
+        pngf, err := os.Open("path/to/icon.png")
+        if err != nil {
+                log.Fatalf("opening source image: %v", err)
+        }
+        defer pngf.Close()
+        srcImg, _, err := image.Decode(pngf)
+        if err != nil {
+                log.Fatalf("decoding source image: %v", err)
+        }
+        dest, err := os.Create("path/to/icon.icns")
+        if err != nil {
+                log.Fatalf("opening destination file: %v", err)
+        }
+        defer dest.Close()
+        if err := icns.Encode(dest, srcImg); err != nil {
+                log.Fatalf("encoding icns: %v", err)
+        }
 }
 ```
 
