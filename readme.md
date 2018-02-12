@@ -38,7 +38,7 @@ func main() {
   if err != nil {
     log.Fatalf("decoding source image: %v", err)
   }
-  dest, err := os.Open("path/to/icon.icns")
+  dest, err := os.Create("path/to/icon.icns")
   if err != nil {
     log.Fatalf("opening destination file: %v", err)
   }
