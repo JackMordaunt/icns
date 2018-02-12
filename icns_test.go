@@ -1,12 +1,16 @@
 package icns
 
 import (
+	"bytes"
 	"image"
+	"image/jpeg"
+	"image/png"
 	"io"
 	"io/ioutil"
 	"testing"
 
 	"github.com/jackmordaunt/deep"
+	"github.com/pkg/errors"
 )
 
 // TestEncode tests for input validation, sanity checks and errors.
@@ -215,6 +219,94 @@ func TestFindNearestSize(t *testing.T) {
 	}
 }
 
+func TestEncodeImage(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		desc string
+
+		img    image.Image
+		format string
+
+		want string
+	}{
+		{
+			"png - png",
+			_decode(_png(rect(0, 0, 50, 50))),
+			"png",
+			"png",
+		},
+		{
+			"default png - png",
+			_decode(_png(rect(0, 0, 50, 50))),
+			"",
+			"png",
+		},
+		{
+			"jpg - jpg",
+			_decode(_jpg(rect(0, 0, 50, 50))),
+			"jpeg",
+			"jpeg",
+		},
+		{
+			"default jpg - png",
+			_decode(_jpg(rect(0, 0, 50, 50))),
+			"",
+			"png",
+		},
+		{
+			"invalid format identifier",
+			_decode(_jpg(rect(0, 0, 50, 50))),
+			"asdf",
+			"png",
+		},
+		{
+			"not actually a jpeg: forces a conversion",
+			_decode(_png(rect(0, 0, 50, 50))),
+			"jpeg",
+			"jpeg",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(st *testing.T) {
+			data, err := encodeImage(tt.img, tt.format)
+			if err != nil {
+				st.Fatalf("encoding image: %v", err)
+			}
+			_, f, err := image.Decode(bytes.NewBuffer(data))
+			if err != nil {
+				st.Fatalf("decoding iamge: %v", err)
+			}
+			if f != tt.want {
+				st.Fatalf("formats: want=%s, got=%s", tt.want, f)
+			}
+		})
+	}
+}
+
 func rect(x0, y0, x1, y1 int) image.Image {
 	return image.Rect(x0, y0, x1, y1)
+}
+
+func _png(img image.Image) io.Reader {
+	buf := bytes.NewBuffer(nil)
+	if err := png.Encode(buf, img); err != nil {
+		panic(errors.Wrapf(err, "encoding png"))
+	}
+	return buf
+}
+
+func _jpg(img image.Image) io.Reader {
+	buf := bytes.NewBuffer(nil)
+	if err := jpeg.Encode(buf, img, nil); err != nil {
+		panic(errors.Wrapf(err, "encoding jpeg"))
+	}
+	return buf
+}
+
+func _decode(r io.Reader) image.Image {
+	m, _, err := image.Decode(r)
+	if err != nil {
+		panic(errors.Wrapf(err, "decoding image"))
+	}
+	return m
 }
