@@ -6,6 +6,8 @@ import (
 	"github.com/spf13/pflag"
 )
 
+var version = "master"
+
 func usage() {
 	fmt.Printf("\n")
 	pflag.Usage()
