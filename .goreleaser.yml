@@ -6,13 +6,13 @@ release:
   name_template: '{{.Tag}}'
 brew:
   commit_author:
-    name: goreleaserbot
-    email: goreleaser@carlosbecker.com
+    name: jackmordaunt
+    email: jackmordaunt@gmail.com
   install: bin.install "icns"
 scoop:
   commit_author:
-    name: goreleaserbot
-    email: goreleaser@carlosbecker.com
+    name: jackmordaunt
+    email: jackmordaunt@gmail.com
 builds:
 - goos:
   - linux
