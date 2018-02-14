@@ -7,9 +7,9 @@ import (
 	"image/png"
 	"io"
 	"io/ioutil"
+	"reflect"
 	"testing"
 
-	"github.com/jackmordaunt/deep"
 	"github.com/pkg/errors"
 )
 
@@ -111,7 +111,7 @@ func TestSizesFromMax(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(st *testing.T) {
 			got := sizesFrom(tt.from)
-			if !deep.EqualContents(got, tt.want) {
+			if !reflect.DeepEqual(got, tt.want) {
 				st.Errorf("want=%d, got=%d", tt.want, got)
 			}
 		})

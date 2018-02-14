@@ -135,7 +135,7 @@ func sizesFrom(max uint) []uint {
 			return sizes[ii:len(sizes)]
 		}
 	}
-	return nil
+	return []uint{}
 }
 
 // OsType is a 4 character identifier used to differentiate icon types.
