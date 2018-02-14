@@ -1,4 +1,4 @@
-project_name: icns
+project_name: icnsify
 release:
   github:
     owner: jackmordaunt
@@ -6,13 +6,13 @@ release:
   name_template: '{{.Tag}}'
 brew:
   commit_author:
-    name: jackmordaunt
-    email: jackmordaunt@gmail.com
+    name: goreleaserbot
+    email: goreleaser@carlosbecker.com
   install: bin.install "icns"
 scoop:
   commit_author:
-    name: jackmordaunt
-    email: jackmordaunt@gmail.com
+    name: goreleaserbot
+    email: goreleaser@carlosbecker.com
 builds:
 - goos:
   - linux
@@ -27,7 +27,7 @@ builds:
   - linux_386
   - darwin_amd64
   - darwin_386
-  main: .
+  main: ./cmd/icnsify/main.go
   ldflags: -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
   binary: icnsify
   lang: go
