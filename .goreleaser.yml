@@ -27,7 +27,7 @@ builds:
   - linux_386
   - darwin_amd64
   - darwin_386
-  main: ./cmd/icnsify/main.go
+  main: ./cmd/icnsify
   ldflags: -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
   binary: icnsify
   lang: go
