@@ -71,7 +71,7 @@ func NewIconSet(img image.Image, interp InterpolationFunction, format string) (*
 	}
 	icons := []*Icon{}
 	for _, size := range sizesFrom(biggest) {
-		t, ok := getType(size)
+		t, ok := getTypeFromSize(size)
 		if !ok {
 			continue
 		}
@@ -139,28 +139,41 @@ func sizesFrom(max uint) []uint {
 }
 
 // OsType is a 4 character identifier used to differentiate icon types.
-type OsType string
+type OsType struct {
+	ID   string
+	Size uint
+}
 
-// getType returns the type for the given icon size (in px).
+var osTypes = []OsType{
+	{ID: "ic10", Size: uint(1024)},
+	{ID: "ic14", Size: uint(512)},
+	{ID: "ic13", Size: uint(256)},
+	{ID: "ic07", Size: uint(128)},
+	{ID: "ic12", Size: uint(64)},
+	{ID: "ic11", Size: uint(32)},
+}
+
+// getTypeFromSize returns the type for the given icon size (in px).
 // The boolean indicates whether the type exists.
-func getType(size uint) (OsType, bool) {
-	// 'types' is a map of the OSTypes we care about.
-	// All dimensions are considered as retina.
-	//
-	// Todo(jackmordaunt): Not sure if only retina is sufficient. Should all
-	// types be handled? `iconutil` uses file names to determine whether a
-	// retina image is desired eg: "icon_256x256@2.png", without such a hint
-	// how can you disambiguate 256x256 standard vs 256x256 retina?
-	// Do we even need to consider standard sizes over retina?
-	// For now, just retina types are considered.
-	types := map[uint]OsType{
-		1024: "ic10",
-		512:  "ic14",
-		256:  "ic13",
-		128:  "ic07",
-		64:   "ic12",
-		32:   "ic11",
+func getTypeFromSize(size uint) (OsType, bool) {
+	for _, t := range osTypes {
+		if t.Size == size {
+			return t, true
+		}
 	}
-	v, ok := types[size]
-	return v, ok
+	return OsType{}, false
+}
+
+func getTypeFromID(ID string) (OsType, bool) {
+	for _, t := range osTypes {
+		if t.ID == ID {
+			return t, true
+		}
+	}
+	return OsType{}, false
+}
+
+func osTypeFromID(ID string) OsType {
+	t, _ := getTypeFromID(ID)
+	return t
 }
