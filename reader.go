@@ -22,8 +22,7 @@ func Decode(r io.Reader) (image.Image, error) {
 		return nil, errors.New("invalid header for icns file")
 	}
 	fileSize := binary.BigEndian.Uint32(data[4:8])
-	icons := []OsType{}
-	datalist := []io.Reader{}
+	icons := []iconReader{}
 	read := uint32(8)
 	for read < fileSize {
 		next := data[read : read+4]
@@ -41,23 +40,28 @@ func Decode(r io.Reader) (image.Image, error) {
 			read += 4
 			iconData := data[read : read+iconSize]
 			read += iconSize
-			icons = append(icons, osTypeFromID(string(next)))
-			datalist = append(datalist, bytes.NewBuffer(iconData))
+			icons = append(icons, iconReader{
+				OsType: osTypeFromID(string(next)),
+				r:      bytes.NewBuffer(iconData),
+			})
 		}
 	}
-	var max OsType
-	var maxData io.Reader
-	for ii, i := range icons {
-		if i.Size > max.Size {
-			max = i
-			maxData = datalist[ii]
+	var biggest iconReader
+	for _, icon := range icons {
+		if icon.Size > biggest.Size {
+			biggest = icon
 		}
 	}
-	img, _, err := image.Decode(maxData)
+	img, _, err := image.Decode(biggest.r)
 	if err != nil {
 		return nil, err
 	}
 	return img, nil
+}
+
+type iconReader struct {
+	OsType
+	r io.Reader
 }
 
 func isOsType(ID string) bool {
