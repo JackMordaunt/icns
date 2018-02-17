@@ -3,10 +3,12 @@ package icns
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
+	"fmt"
 	"image"
 	"io"
 	"io/ioutil"
+
+	"github.com/pkg/errors"
 )
 
 // Decode finds the largest icon listed in the icns file and returns it,
@@ -19,7 +21,7 @@ func Decode(r io.Reader) (image.Image, error) {
 	}
 	icnsHeader := data[0:4]
 	if string(icnsHeader) != "icns" {
-		return nil, errors.New("invalid header for icns file")
+		return nil, fmt.Errorf("invalid header for icns file")
 	}
 	fileSize := binary.BigEndian.Uint32(data[4:8])
 	icons := []iconReader{}
@@ -46,6 +48,9 @@ func Decode(r io.Reader) (image.Image, error) {
 			})
 		}
 	}
+	if len(icons) == 0 {
+		return nil, fmt.Errorf("no icons found")
+	}
 	var biggest iconReader
 	for _, icon := range icons {
 		if icon.Size > biggest.Size {
@@ -54,7 +59,7 @@ func Decode(r io.Reader) (image.Image, error) {
 	}
 	img, _, err := image.Decode(biggest.r)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "decoding largest image")
 	}
 	return img, nil
 }
