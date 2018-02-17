@@ -14,34 +14,37 @@ import (
 )
 
 // TestDecode relies on Encode being correct.
+// We are testing that an ICNS with a series of icons will only yield the
+// largest icon in the series.
 func TestDecode(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		desc string
-		img  image.Image
-
-		wantErr bool
+		desc  string
+		input image.Image
+		want  image.Image
 	}{
 		{
-			"valid rectangle icon",
-			rect(0, 0, 1024, 1024),
-			false,
+			"valid square icon, exact size",
+			rect(0, 0, 256, 256),
+			rect(0, 0, 256, 256),
+		},
+		{
+			"non exact size",
+			rect(0, 0, 50, 50),
+			rect(0, 0, 32, 32),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(st *testing.T) {
 			buf := bytes.NewBuffer(nil)
-			if err := Encode(buf, tt.img); err != nil {
+			if err := Encode(buf, tt.input); err != nil {
 				st.Fatalf("unexpected error while encoding: %v", err)
 			}
 			img, err := Decode(buf)
-			if !tt.wantErr && err != nil {
+			if err != nil {
 				st.Fatalf("unexpected error: %v", err)
 			}
-			if tt.wantErr && err == nil {
-				st.Fatalf("wanted error, got nil")
-			}
-			if !imageCompare(img, tt.img) {
+			if tt.want != nil && !imageCompare(img, tt.want) {
 				st.Fatalf("decoded image is incorrect")
 			}
 		})
