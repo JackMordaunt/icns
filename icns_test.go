@@ -13,6 +13,64 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TestDecode relies on Encode being correct.
+func TestDecode(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		desc string
+		img  image.Image
+
+		wantErr bool
+	}{
+		{
+			"valid rectangle icon",
+			rect(0, 0, 1024, 1024),
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(st *testing.T) {
+			buf := bytes.NewBuffer(nil)
+			if err := Encode(buf, tt.img); err != nil {
+				st.Fatalf("unexpected error while encoding: %v", err)
+			}
+			img, err := Decode(buf)
+			if !tt.wantErr && err != nil {
+				st.Fatalf("unexpected error: %v", err)
+			}
+			if tt.wantErr && err == nil {
+				st.Fatalf("wanted error, got nil")
+			}
+			if !imageCompare(img, tt.img) {
+				st.Fatalf("decoded image is incorrect")
+			}
+		})
+	}
+}
+
+func imageCompare(left, right image.Image) bool {
+	if left == nil && right == nil {
+		return true
+	}
+	if left == nil && right != nil {
+		return false
+	}
+	if left != nil && right == nil {
+		return false
+	}
+	lb := left.Bounds()
+	for ii := lb.Min.X; ii <= lb.Max.X; ii++ {
+		for kk := lb.Min.Y; kk <= lb.Max.Y; kk++ {
+			lr, lg, lb, la := left.At(ii, kk).RGBA()
+			rr, rg, rb, ra := right.At(ii, kk).RGBA()
+			if lr != rr || lg != rg || lb != rb || la != ra {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // TestEncode tests for input validation, sanity checks and errors.
 // The validity of the encoding is not tested here.
 // Super large images are not tested because the resizing takes too
