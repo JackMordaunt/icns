@@ -54,7 +54,11 @@ func encodeImage(img image.Image, format string) ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
 	switch format {
 	case "jpeg":
-		if err := jpeg.Encode(buf, img, &jpeg.Options{Quality: 100}); err != nil {
+		if err := jpeg.Encode(
+			buf,
+			img,
+			&jpeg.Options{Quality: 100},
+		); err != nil {
 			return nil, err
 		}
 	default:
