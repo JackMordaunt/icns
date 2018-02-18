@@ -306,7 +306,7 @@ func TestEncodeImage(t *testing.T) {
 			"jpg - jpg",
 			_decode(_jpg(rect(0, 0, 50, 50))),
 			"jpeg",
-			"jpeg",
+			"png",
 		},
 		{
 			"default jpg - png",
@@ -321,15 +321,15 @@ func TestEncodeImage(t *testing.T) {
 			"png",
 		},
 		{
-			"not actually a jpeg: forces a conversion",
+			"not actually a jpeg",
 			_decode(_png(rect(0, 0, 50, 50))),
 			"jpeg",
-			"jpeg",
+			"png",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(st *testing.T) {
-			data, err := encodeImage(tt.img, tt.format)
+			data, err := encodeImage(tt.img)
 			if err != nil {
 				st.Fatalf("encoding image: %v", err)
 			}
