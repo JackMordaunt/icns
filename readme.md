@@ -21,9 +21,13 @@ Pipe it
 
 `cat icon.png | icnsify | cat > icon.icns`
 
+`cat icon.icns | icnsify | cat > icon.png`
+
 Standard
 
 `icnsify -i icon.png -o icon.icns`
+
+`icnsify -i icon.icns -o icon.png`
 
 ## Library Usage
 
@@ -55,7 +59,6 @@ func main() {
 * [x] Command Line Interface
   * [x] Encoding
   * [x] Pipe support
-  * [ ] Decoding
-* [ ] Implement Decoder: `.icns -> image.Image`
+  * [x] Decoding
+* [x] Implement Decoder: `.icns -> image.Image`
 * [ ] Symmetric test: `decode(encode(img)) == img`
-* [x] Encode based on input image format (jpg -> jpg, png -> png) to avoid lossy conversions
