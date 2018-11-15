@@ -44,7 +44,7 @@ archive:
   - README*
   - changelog*
   - CHANGELOG*
-fpm:
+nfpm:
   name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm
     }}v{{ .Arm }}{{ end }}'
   bindir: /usr/local/bin
