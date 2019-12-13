@@ -24,6 +24,12 @@ func NewEncoder(wr io.Writer) *Encoder {
 
 // WithAlgorithm applies the interpolation function used to resize the image.
 func (enc *Encoder) WithAlgorithm(a InterpolationFunction) *Encoder {
+	if a > 5 {
+		a = 5
+	}
+	if a < 0 {
+		a = 0
+	}
 	enc.Algorithm = a
 	return enc
 }
