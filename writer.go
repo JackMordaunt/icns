@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/png"
 	"io"
+	"sync"
 )
 
 // Icon encodes an icns icon.
@@ -12,9 +13,10 @@ type Icon struct {
 	Type  OsType
 	Image image.Image
 
-	header    [8]byte
-	headerSet bool
-	data      []byte
+	header [8]byte
+	data   []byte
+
+	init sync.Once
 }
 
 // WriteTo encodes the icon into wr.
@@ -57,15 +59,14 @@ func encodeImage(img image.Image) ([]byte, error) {
 }
 
 func (i *Icon) writeHeader(wr io.Writer) (int64, error) {
-	if !i.headerSet {
-		defer func() { i.headerSet = true }()
+	i.init.Do(func() {
 		i.header[0] = i.Type.ID[0]
 		i.header[1] = i.Type.ID[1]
 		i.header[2] = i.Type.ID[2]
 		i.header[3] = i.Type.ID[3]
 		length := uint32(len(i.data) + 8)
 		writeUint32(i.header[4:8], length)
-	}
+	})
 	written, err := wr.Write(i.header[:8])
 	return int64(written), err
 }
@@ -79,9 +80,10 @@ func (i *Icon) writeData(wr io.Writer) (int64, error) {
 type IconSet struct {
 	Icons []*Icon
 
-	header    [8]byte
-	headerSet bool
-	data      []byte
+	header [8]byte
+	data   []byte
+
+	init sync.Once
 }
 
 // WriteTo writes the ICNS file to wr.
@@ -121,15 +123,14 @@ func (s *IconSet) encodeIcons() error {
 }
 
 func (s *IconSet) writeHeader(wr io.Writer) (int64, error) {
-	if !s.headerSet {
-		defer func() { s.headerSet = true }()
+	s.init.Do(func() {
 		s.header[0] = 'i'
 		s.header[1] = 'c'
 		s.header[2] = 'n'
 		s.header[3] = 's'
 		length := uint32(len(s.data) + 8)
 		writeUint32(s.header[4:8], length)
-	}
+	})
 	written, err := wr.Write(s.header[:8])
 	return int64(written), err
 }
