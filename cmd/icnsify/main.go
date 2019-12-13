@@ -18,20 +18,19 @@ import (
 
 var (
 	fs     = afero.NewOsFs()
-	piping bool
 	input  io.Reader
 	output io.Writer
+
+	inputPath  = pflag.StringP("input", "i", "", "Input image for conversion to icns from jpg|png or visa versa.")
+	outputPath = pflag.StringP("output", "o", "", "Output path, defaults to <path/to/image>.(icns|png) depending on input.")
+	resize     = pflag.IntP("resize", "r", 5, "Quality of resize algorithm. Values range from 0 to 5, fastest to slowest execution time. Defaults to slowest for best quality.")
+	piping     = pflag.BoolP("pipe", "p", false, "Explicitly set to pipe-mode.")
 )
 
 func main() {
-	var (
-		inputPath  = pflag.StringP("input", "i", "", "Input image for conversion to icns from jpg|png or visa versa.")
-		outputPath = pflag.StringP("output", "o", "", "Output path, defaults to <path/to/image>.(icns|png) depending on input.")
-		resize     = pflag.IntP("resize", "r", 5, "Quality of resize algorithm. Values range from 0 to 5, fastest to slowest execution time. Defaults to slowest for best quality.")
-	)
 	pflag.Parse()
 	in, out, algorithm := sanitiseInputs(*inputPath, *outputPath, *resize)
-	if !piping {
+	if !*piping {
 		if in == "" {
 			usage()
 			os.Exit(0)

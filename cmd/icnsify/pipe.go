@@ -14,7 +14,7 @@ func init() {
 		return
 	}
 	if info.Size() > 0 {
-		piping = true
+		*piping = true
 		input = os.Stdin
 		output = os.Stdout
 	}
