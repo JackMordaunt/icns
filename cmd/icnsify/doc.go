@@ -13,9 +13,10 @@ func usage() {
 	pflag.Usage()
 	fmt.Printf(`
 You can also pipe to stdin and from stdout. 
-The pipes will be detected automatically, and both --input and --output will be ignored.
+Pipes will be detected automatically.
+'--input' and '--output' will override the respective pipes.
 
-		cat icon.png | icnsify | > icon.icns
+	cat icon.png | icnsify > icon.icns
 
 `)
 }

@@ -1,8 +1,8 @@
 package main
 
 import (
+	"fmt"
 	"image"
-	"image/jpeg"
 	"image/png"
 	"io"
 	"log"
@@ -16,107 +16,101 @@ import (
 	"github.com/spf13/pflag"
 )
 
-var (
-	fs     = afero.NewOsFs()
-	input  io.Reader
-	output io.Writer
-
-	inputPath  = pflag.StringP("input", "i", "", "Input image for conversion to icns from jpg|png or visa versa.")
-	outputPath = pflag.StringP("output", "o", "", "Output path, defaults to <path/to/image>.(icns|png) depending on input.")
-	resize     = pflag.IntP("resize", "r", 5, "Quality of resize algorithm. Values range from 0 to 5, fastest to slowest execution time. Defaults to slowest for best quality.")
-	piping     = pflag.BoolP("pipe", "p", false, "Explicitly set to pipe-mode.")
-)
-
 func main() {
+	var (
+		fs               = afero.NewOsFs()
+		input  io.Reader = os.Stdin
+		output io.Writer = os.Stdout
+
+		inputPath  = pflag.StringP("input", "i", "", "Input image for conversion to icns from jpg|png or visa versa.")
+		outputPath = pflag.StringP("output", "o", "", "Output path, defaults to <path/to/image>.(icns|png) depending on input.")
+		algorithm  = pflag.IntP("resize", "r", 5, "Quality of resize algorithm. Values range from 0 to 5, fastest to slowest execution time. Defaults to slowest for best quality.")
+	)
 	pflag.Parse()
-	in, out, algorithm := sanitiseInputs(*inputPath, *outputPath, *resize)
-	if !*piping {
-		if in == "" {
-			usage()
-			os.Exit(0)
-		}
-		sourcef, err := fs.Open(in)
+	in, out := sanitize(*inputPath, *outputPath)
+	if *inputPath != "" {
+		var (
+			closer func() error
+			err    error
+		)
+		input, closer, err = func(path string) (io.Reader, func() error, error) {
+			f, err := fs.Open(path)
+			if err != nil {
+				return nil, nil, fmt.Errorf("input file: %w", err)
+			}
+			if err := fs.MkdirAll(filepath.Dir(path), 0755); err != nil {
+				return nil, nil, fmt.Errorf("preparing parent directory: %w", err)
+			}
+			return f, func() error { return f.Close() }, nil
+		}(in)
 		if err != nil {
-			log.Fatalf("opening source image: %v", err)
+			log.Fatalf("error: %v", err)
 		}
-		defer sourcef.Close()
-		input = sourcef
-		if err := fs.MkdirAll(filepath.Dir(out), 0755); err != nil {
-			log.Fatalf("preparing output directory: %v", err)
-		}
-		outputf, err := fs.Create(out)
+		defer closer()
+	}
+	if *outputPath != "" {
+		var (
+			closer func() error
+			err    error
+		)
+		output, closer, err = func(path string) (io.Writer, func() error, error) {
+			f, err := fs.Create(path)
+			if err != nil {
+				return nil, nil, fmt.Errorf("output file: %w", err)
+			}
+			if err := fs.MkdirAll(filepath.Dir(path), 0755); err != nil {
+				return nil, nil, fmt.Errorf("preparing parent directory: %w", err)
+			}
+			return f, func() error { return f.Close() }, nil
+		}(out)
 		if err != nil {
-			log.Fatalf("creating icns file: %v", err)
+			log.Fatalf("error: %v", err)
 		}
-		defer outputf.Close()
-		output = outputf
+		defer closer()
 	}
 	img, format, err := image.Decode(input)
 	if err != nil {
 		log.Fatalf("decoding input: %v", err)
 	}
 	if format == "icns" {
-		imageType := strings.ToLower(filepath.Ext(out))
-		if _, ok := encoders[imageType]; !ok {
-			imageType = ".png"
-		}
-		if err := encoders[imageType](output, img); err != nil {
-			log.Fatalf("encoding %s: %v", imageType, err)
+		if err := png.Encode(output, img); err != nil {
+			log.Fatalf("encoding png: %v", err)
 		}
 	} else {
 		enc := icns.NewEncoder(output).
-			WithAlgorithm(algorithm)
+			WithAlgorithm(icns.InterpolationFunction(*algorithm))
 		if err := enc.Encode(img); err != nil {
 			log.Fatalf("encoding icns: %v", err)
 		}
 	}
 }
 
-func sanitiseInputs(
-	inputPath string,
-	outputPath string,
-	resize int,
-) (string, string, icns.InterpolationFunction) {
-	if filepath.Ext(inputPath) == ".icns" {
-		if outputPath == "" {
-			outputPath = changeExtensionTo(inputPath, "png")
-		}
-		if filepath.Ext(outputPath) == "" {
-			outputPath += ".png"
-		}
+// sanitize ensures the inputs are valid.
+func sanitize(
+	in string,
+	out string,
+) (string, string) {
+	if out == "" {
+		out = stripExtension(in)
+	} else {
+		out = stripExtension(out)
 	}
-	if filepath.Ext(inputPath) != ".icns" {
-		if outputPath == "" {
-			outputPath = changeExtensionTo(inputPath, "icns")
-		}
-		if filepath.Ext(outputPath) == "" {
-			outputPath += ".icns"
-		}
+	if filepath.Ext(in) == ".icns" {
+		out += ".png"
 	}
-	if resize < 0 {
-		resize = 0
+	if filepath.Ext(in) != ".icns" {
+		out += ".icns"
 	}
-	if resize > 5 {
-		resize = 5
-	}
-	return inputPath, outputPath, icns.InterpolationFunction(resize)
+	return in, out
 }
 
-func changeExtensionTo(path, ext string) string {
+func replaceExtension(path, ext string) string {
 	if !strings.HasPrefix(ext, ".") {
 		ext = "." + ext
 	}
 	return filepath.Base(path[:len(path)-len(filepath.Ext(path))] + ext)
 }
 
-type encoderFunc func(io.Writer, image.Image) error
-
-func encodeJPEG(w io.Writer, m image.Image) error {
-	return jpeg.Encode(w, m, &jpeg.Options{Quality: 100})
-}
-
-var encoders = map[string]encoderFunc{
-	".png":  png.Encode,
-	".jpg":  encodeJPEG,
-	".jpeg": encodeJPEG,
+func stripExtension(path string) string {
+	return path[:len(path)-len(filepath.Ext(path))]
 }
