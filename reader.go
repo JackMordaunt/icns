@@ -11,6 +11,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+var jpeg2000header = []byte{0x00, 0x00, 0x00, 0x0c, 0x6a, 0x50, 0x20, 0x20}
+
 // Decode finds the largest icon listed in the icns file and returns it,
 // ignoring all other sizes. The format returned will be whatever the icon data
 // is, typically jpeg or png.
@@ -48,10 +50,14 @@ func Decode(r io.Reader) (image.Image, error) {
 		if isOsType(string(next)) {
 			iconData := data[read : read+resSize-8] // size includes header and size fields
 
-			icons = append(icons, iconReader{
-				OsType: osTypeFromID(string(next)),
-				r:      bytes.NewBuffer(iconData),
-			})
+			if bytes.Equal(iconData[:8], jpeg2000header) {
+				// skipping JPEG2000
+			} else {
+				icons = append(icons, iconReader{
+					OsType: osTypeFromID(string(next)),
+					r:      bytes.NewBuffer(iconData),
+				})
+			}
 		}
 		read += resSize-8 // size includes header and size fields
 	}
