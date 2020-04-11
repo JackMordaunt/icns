@@ -147,10 +147,14 @@ type OsType struct {
 var osTypes = []OsType{
 	{ID: "ic10", Size: uint(1024)},
 	{ID: "ic14", Size: uint(512)},
+	{ID: "ic09", Size: uint(512)},
 	{ID: "ic13", Size: uint(256)},
+	{ID: "ic08", Size: uint(256)},
 	{ID: "ic07", Size: uint(128)},
+	{ID: "it32", Size: uint(128)},
 	{ID: "ic12", Size: uint(64)},
 	{ID: "ic11", Size: uint(32)},
+	{ID: "il32", Size: uint(32)},
 }
 
 // getTypeFromSize returns the type for the given icon size (in px).
