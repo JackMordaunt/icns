@@ -31,22 +31,29 @@ func Decode(r io.Reader) (image.Image, error) {
 		read += 4
 		switch string(next) {
 		case "TOC ":
-			read += 4
+			resSize := binary.BigEndian.Uint32(data[read : read+4])
+			read += resSize-4 // size includes header and size fields
 			continue
 		case "icnV":
 			read += 4
 			continue
 		}
+
+		resSize := binary.BigEndian.Uint32(data[read : read+4])
+		read += 4
+		if resSize == 0 {
+			continue // no content, we're not interested
+		}
+
 		if isOsType(string(next)) {
-			iconSize := binary.BigEndian.Uint32(data[read : read+4])
-			read += 4
-			iconData := data[read : read+iconSize]
-			read += iconSize
+			iconData := data[read : read+resSize-8] // size includes header and size fields
+
 			icons = append(icons, iconReader{
 				OsType: osTypeFromID(string(next)),
 				r:      bytes.NewBuffer(iconData),
 			})
 		}
+		read += resSize-8 // size includes header and size fields
 	}
 	if len(icons) == 0 {
 		return nil, fmt.Errorf("no icons found")
