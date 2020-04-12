@@ -161,7 +161,7 @@ func TestSizesFromMax(t *testing.T) {
 		{
 			"large",
 			99999,
-			[]uint{1024, 512, 256, 64, 32},
+			[]uint{1024, 512, 256, 128, 64, 32},
 		},
 		{
 			"smallest",
