@@ -47,19 +47,19 @@ func Decode(r io.Reader) (image.Image, error) {
 			continue // no content, we're not interested
 		}
 
-		if isOsType(string(next)) {
-			iconData := data[read : read+resSize-8] // size includes header and size fields
-
-			if bytes.Equal(iconData[:8], jpeg2000header) {
-				// skipping JPEG2000
-			} else {
-				icons = append(icons, iconReader{
-					OsType: osTypeFromID(string(next)),
-					r:      bytes.NewBuffer(iconData),
-				})
-			}
-		}
+		iconData := data[read : read+resSize-8]
 		read += resSize-8 // size includes header and size fields
+
+		if isOsType(string(next)) {
+			if bytes.Equal(iconData[:8], jpeg2000header) {
+				continue // skipping JPEG2000
+			}
+
+			icons = append(icons, iconReader{
+				OsType: osTypeFromID(string(next)),
+				r:      bytes.NewBuffer(iconData),
+			})
+		}
 	}
 	if len(icons) == 0 {
 		return nil, fmt.Errorf("no icons found")
