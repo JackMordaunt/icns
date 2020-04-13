@@ -33,22 +33,22 @@ func Decode(r io.Reader) (image.Image, error) {
 		read += 4
 		switch string(next) {
 		case "TOC ":
-			resSize := binary.BigEndian.Uint32(data[read : read+4])
-			read += resSize-4 // size includes header and size fields
+			tocSize := binary.BigEndian.Uint32(data[read : read+4])
+			read += tocSize-4 // size includes header and size fields
 			continue
 		case "icnV":
 			read += 4
 			continue
 		}
 
-		resSize := binary.BigEndian.Uint32(data[read : read+4])
+		dataSize := binary.BigEndian.Uint32(data[read : read+4])
 		read += 4
-		if resSize == 0 {
+		if dataSize == 0 {
 			continue // no content, we're not interested
 		}
 
-		iconData := data[read : read+resSize-8]
-		read += resSize-8 // size includes header and size fields
+		iconData := data[read : read+dataSize-8]
+		read += dataSize-8 // size includes header and size fields
 
 		if isOsType(string(next)) {
 			if bytes.Equal(iconData[:8], jpeg2000header) {
