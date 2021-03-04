@@ -55,10 +55,16 @@ func main() {
 
 ## Roadmap
 
-* [x] Encoder: `image.Image -> .icns`
-* [x] Command Line Interface
-  * [x] Encoding
-  * [x] Pipe support
-  * [x] Decoding
-* [x] Implement Decoder: `.icns -> image.Image`
-* [ ] Symmetric test: `decode(encode(img)) == img`
+- [x] Encoder: `image.Image -> .icns`
+- [x] Command Line Interface
+  - [x] Encoding
+  - [x] Pipe support
+  - [x] Decoding
+- [x] Implement Decoder: `.icns -> image.Image`
+- [ ] Symmetric test: `decode(encode(img)) == img`
+
+## Coffee
+
+If this software is useful to you, consider buying me a coffee!
+
+[https://liberapay.com/JackMordaunt](https://liberapay.com/JackMordaunt)
