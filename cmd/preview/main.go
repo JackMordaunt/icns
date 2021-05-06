@@ -26,12 +26,31 @@ import (
 	"github.com/ncruces/zenity"
 )
 
+// TODO(jfm): convert png to icns.
+// - select png file
+// - convert and show thumbnails
+// - export button to save result
+//
+// BUG(jfm): macOS file dialog returns "no such file or directory". Could be permissions issue.
+
 func main() {
-	go func() {
-		ui := UI{
-			Window: app.NewWindow(app.Title("icnsify"), app.MinSize(unit.Dp(700), unit.Dp(250))),
-			Th:     m.NewTheme(gofont.Collection()),
+	ui := UI{
+		Window: app.NewWindow(app.Title("icnsify"), app.MinSize(unit.Dp(700), unit.Dp(250))),
+		Th:     m.NewTheme(gofont.Collection()),
+	}
+	if len(os.Args) > 1 {
+		if file := os.Args[1]; filepath.Ext(file) == ".icns" {
+			go func() {
+				imgs, err := LoadICNS(file)
+				ui.ProcessedIcon <- ProcessedIconResult{
+					Imgs: imgs,
+					File: filepath.Base(file),
+					Err:  err,
+				}
+			}()
 		}
+	}
+	go func() {
 		if err := ui.Loop(); err != nil {
 			log.Fatalf("error: %v", err)
 		}
@@ -104,18 +123,9 @@ func (ui *UI) Update(gtx C) {
 				if err != nil {
 					return nil, "", fmt.Errorf("selecting file: %w", err)
 				}
-				file, err = filepath.Abs(file)
-				if err != nil {
-					return nil, "", fmt.Errorf("resolving file path: %w", err)
-				}
-				f, err := os.OpenFile(file, os.O_RDONLY, 0644)
+				imgs, err := LoadICNS(file)
 				if err != nil {
 					return nil, "", err
-				}
-				defer f.Close()
-				imgs, err := icns.DecodeAll(f)
-				if err != nil {
-					return nil, "", fmt.Errorf("decoding: %w", err)
 				}
 				return imgs, file, nil
 			}()
@@ -137,7 +147,7 @@ func (ui *UI) Update(gtx C) {
 	case r := <-ui.ProcessedIcon:
 		if r.Err != nil {
 			// TODO(jfm): push to dismissable error stack.
-			log.Printf("opening icon: %v", r.Err)
+			log.Printf("loading icns file: %v", r.Err)
 		} else {
 			ui.Icons = ui.Icons[:]
 			for _, img := range r.Imgs {
@@ -251,4 +261,32 @@ func (ui *UI) LayoutThumbnail(gtx C, ii int) D {
 			return D{}
 		}),
 	)
+}
+
+// LoadImages loads the specified images to preview.
+// Safe for concurrent use.
+func (ui *UI) LoadImages(name string, imgs []image.Image) {
+	ui.ProcessedIcon <- ProcessedIconResult{
+		Imgs: imgs,
+		File: name,
+		Err:  nil,
+	}
+}
+
+// LoadICNS decodes all images from the specified icns file.
+func LoadICNS(path string) ([]image.Image, error) {
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("resolving file path: %w", err)
+	}
+	f, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	imgs, err := icns.DecodeAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("decoding: %w", err)
+	}
+	return imgs, nil
 }
