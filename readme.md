@@ -15,7 +15,23 @@ A small CLI app `icnsify` is provided allowing you to create icns files using th
 
 Note: All icons within the `icns` are sized for high dpi retina screens, using the appropriate `icns` OSTypes.
 
+## GUI
+
+`preview` is a gui for displaying `icns` files cross-platform.
+
+```
+git clone https://github.com/jackmordaunt/icns
+cd icns && go install ./cmd/preview
+```
+
+![preview](docs/preview.png)
+
 ## Command Line
+
+```
+git clone https://github.com/jackmordaunt/icns
+cd icns && go install ./cmd/icnsify
+```
 
 Pipe it
 
@@ -29,7 +45,7 @@ Standard
 
 `icnsify -i icon.icns -o icon.png`
 
-## Library Usage
+## Library
 
 ```go
 func main() {
