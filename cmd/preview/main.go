@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/png"
 	"log"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"gioui.org/app"
 	"gioui.org/font/gofont"
+	"gioui.org/io/key"
 	"gioui.org/io/pointer"
 	"gioui.org/io/system"
 	"gioui.org/layout"
@@ -41,7 +44,7 @@ func main() {
 	if len(os.Args) > 1 {
 		if file := os.Args[1]; filepath.Ext(file) == ".icns" {
 			go func() {
-				imgs, err := LoadICNS(file)
+				imgs, err := LoadImage(file)
 				ui.ProcessedIcon <- ProcessedIconResult{
 					Imgs: imgs,
 					File: filepath.Base(file),
@@ -75,6 +78,8 @@ type UI struct {
 	Icons []widget.Image
 	// FileName is the name of the source icon file on disk.
 	FileName string
+	// Source is the original image data.
+	Source image.Image
 
 	OpenBtn widget.Clickable
 	SideBar layout.List
@@ -115,6 +120,33 @@ func (ui *UI) Update(gtx C) {
 	if ui.Processing {
 		op.InvalidateOp{}.Add(gtx.Ops)
 	}
+	for _, event := range gtx.Events(ui) {
+		if k, ok := event.(key.Event); ok {
+			if k.Name == "S" && k.Modifiers.Contain(key.ModShortcut) && ui.Source != nil {
+				if err := func() error {
+					file, err := zenity.SelectFileSave(
+						zenity.Title("Save as icns"),
+						zenity.Filename(UseExt(ui.FileName, ".icns")))
+					if err != nil {
+						return fmt.Errorf("selecting file: %w", err)
+					}
+					if err := ui.SaveAs(file); err != nil {
+						return fmt.Errorf("saving to icns: %w", err)
+					}
+					return nil
+				}(); err != nil {
+					log.Printf("saving png as icns: %v", err)
+				}
+			}
+		}
+	}
+	for ii := range ui.Icons {
+		for _, event := range gtx.Events(ui.Icons[ii]) {
+			if c, ok := event.(pointer.Event); ok && c.Type == pointer.Release {
+				ui.Preview = &ui.Icons[ii]
+			}
+		}
+	}
 	if ui.OpenBtn.Clicked() {
 		ui.Processing = true
 		go func() {
@@ -123,7 +155,7 @@ func (ui *UI) Update(gtx C) {
 				if err != nil {
 					return nil, "", fmt.Errorf("selecting file: %w", err)
 				}
-				imgs, err := LoadICNS(file)
+				imgs, err := LoadImage(file)
 				if err != nil {
 					return nil, "", err
 				}
@@ -135,13 +167,6 @@ func (ui *UI) Update(gtx C) {
 				Err:  err,
 			}
 		}()
-	}
-	for ii := range ui.Icons {
-		for _, event := range gtx.Events(ui.Icons[ii]) {
-			if c, ok := event.(pointer.Event); ok && c.Type == pointer.Release {
-				ui.Preview = &ui.Icons[ii]
-			}
-		}
 	}
 	select {
 	case r := <-ui.ProcessedIcon:
@@ -157,6 +182,9 @@ func (ui *UI) Update(gtx C) {
 					Position: l.Center,
 				})
 			}
+			if len(r.Imgs) > 0 {
+				ui.Source = r.Imgs[0]
+			}
 			if len(ui.Icons) > 0 {
 				ui.Preview = &ui.Icons[0]
 			}
@@ -170,6 +198,8 @@ func (ui *UI) Update(gtx C) {
 // Layout the UI.
 func (ui *UI) Layout(gtx C) D {
 	ui.SideBar.Axis = l.Vertical
+	key.InputOp{Tag: ui}.Add(gtx.Ops)
+	key.FocusOp{Tag: ui}.Add(gtx.Ops)
 	return l.Flex{
 		Axis: l.Horizontal,
 	}.Layout(
@@ -263,6 +293,22 @@ func (ui *UI) LayoutThumbnail(gtx C, ii int) D {
 	)
 }
 
+// SaveAs saves the previewed image as an icns icon at the path specified.
+func (ui *UI) SaveAs(path string) error {
+	if ui.Source == nil {
+		return nil
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return fmt.Errorf("creating file: %w", err)
+	}
+	defer f.Close()
+	if err := icns.Encode(f, ui.Source); err != nil {
+		return fmt.Errorf("encoding icns: %w", err)
+	}
+	return nil
+}
+
 // LoadImages loads the specified images to preview.
 // Safe for concurrent use.
 func (ui *UI) LoadImages(name string, imgs []image.Image) {
@@ -273,8 +319,8 @@ func (ui *UI) LoadImages(name string, imgs []image.Image) {
 	}
 }
 
-// LoadICNS decodes all images from the specified icns file.
-func LoadICNS(path string) ([]image.Image, error) {
+// LoadImage will load all icons from an icns file, or generate them from a png file.
+func LoadImage(path string) ([]image.Image, error) {
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return nil, fmt.Errorf("resolving file path: %w", err)
@@ -284,9 +330,24 @@ func LoadICNS(path string) ([]image.Image, error) {
 		return nil, err
 	}
 	defer f.Close()
-	imgs, err := icns.DecodeAll(f)
-	if err != nil {
-		return nil, fmt.Errorf("decoding: %w", err)
+	switch filepath.Ext(path) {
+	case ".icns":
+		imgs, err := icns.DecodeAll(f)
+		if err != nil {
+			return nil, fmt.Errorf("decoding icns: %w", err)
+		}
+		return imgs, nil
+	case ".png":
+		img, err := png.Decode(f)
+		if err != nil {
+			return nil, fmt.Errorf("decoding png: %w", err)
+		}
+		return []image.Image{img}, nil
 	}
-	return imgs, nil
+	return nil, nil
+}
+
+// UseExt replaces any existing file extension with the provided one.
+func UseExt(s, ext string) string {
+	return strings.Replace(s, filepath.Ext(s), ".icns", 1)
 }
