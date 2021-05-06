@@ -59,10 +59,20 @@ type UI struct {
 
 	OpenBtn widget.Clickable
 	SideBar layout.List
+
+	ProcessedIcon chan ProcessedIconResult
+	Processing    bool
+}
+
+type ProcessedIconResult struct {
+	File string
+	Imgs []image.Image
+	Err  error
 }
 
 // Loop initializes UI state and starts the render loop.
 func (ui *UI) Loop() error {
+	ui.ProcessedIcon = make(chan ProcessedIconResult)
 	var (
 		ops    op.Ops
 		events = ui.Window.Events()
@@ -83,24 +93,54 @@ func (ui *UI) Loop() error {
 
 // Update the UI state.
 func (ui *UI) Update(gtx C) {
-	ui.SideBar.Axis = l.Vertical
+	if ui.Processing {
+		op.InvalidateOp{}.Add(gtx.Ops)
+	}
 	if ui.OpenBtn.Clicked() {
-		if err := func() error {
-			file, err := zenity.SelectFile()
-			if err != nil {
-				return fmt.Errorf("selecting file: %w", err)
+		ui.Processing = true
+		go func() {
+			imgs, file, err := func() ([]image.Image, string, error) {
+				file, err := zenity.SelectFile(zenity.Title("Select .icns file"))
+				if err != nil {
+					return nil, "", fmt.Errorf("selecting file: %w", err)
+				}
+				file, err = filepath.Abs(file)
+				if err != nil {
+					return nil, "", fmt.Errorf("resolving file path: %w", err)
+				}
+				f, err := os.OpenFile(file, os.O_RDONLY, 0644)
+				if err != nil {
+					return nil, "", err
+				}
+				defer f.Close()
+				imgs, err := icns.DecodeAll(f)
+				if err != nil {
+					return nil, "", fmt.Errorf("decoding: %w", err)
+				}
+				return imgs, file, nil
+			}()
+			ui.ProcessedIcon <- ProcessedIconResult{
+				File: filepath.Base(file),
+				Imgs: imgs,
+				Err:  err,
 			}
-			f, err := os.Open(file)
-			if err != nil {
-				return err
+		}()
+	}
+	for ii := range ui.Icons {
+		for _, event := range gtx.Events(ui.Icons[ii]) {
+			if c, ok := event.(pointer.Event); ok && c.Type == pointer.Release {
+				ui.Preview = &ui.Icons[ii]
 			}
-			defer f.Close()
-			imgs, err := icns.DecodeAll(f)
-			if err != nil {
-				return fmt.Errorf("decoding: %w", err)
-			}
+		}
+	}
+	select {
+	case r := <-ui.ProcessedIcon:
+		if r.Err != nil {
+			// TODO(jfm): push to dismissable error stack.
+			log.Printf("opening icon: %v", r.Err)
+		} else {
 			ui.Icons = ui.Icons[:]
-			for _, img := range imgs {
+			for _, img := range r.Imgs {
 				ui.Icons = append(ui.Icons, widget.Image{
 					Src:      paint.NewImageOp(img),
 					Fit:      widget.Contain,
@@ -110,24 +150,16 @@ func (ui *UI) Update(gtx C) {
 			if len(ui.Icons) > 0 {
 				ui.Preview = &ui.Icons[0]
 			}
-			ui.FileName = filepath.Base(file)
-			return nil
-		}(); err != nil {
-			// TODO(jfm): Push to dismissable error stack.
-			log.Printf("opening icns: %v", err)
+			ui.FileName = r.File
+			ui.Processing = false
 		}
-	}
-	for ii := range ui.Icons {
-		for _, event := range gtx.Events(ui.Icons[ii]) {
-			if c, ok := event.(pointer.Event); ok && c.Type == pointer.Release {
-				ui.Preview = &ui.Icons[ii]
-			}
-		}
+	default:
 	}
 }
 
 // Layout the UI.
 func (ui *UI) Layout(gtx C) D {
+	ui.SideBar.Axis = l.Vertical
 	return l.Flex{
 		Axis: l.Horizontal,
 	}.Layout(
