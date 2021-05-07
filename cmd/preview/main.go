@@ -29,11 +29,6 @@ import (
 	"github.com/ncruces/zenity"
 )
 
-// TODO(jfm): convert png to icns.
-// - select png file
-// - convert and show thumbnails
-// - export button to save result
-//
 // BUG(jfm): macOS file dialog returns "no such file or directory". Could be permissions issue.
 
 func main() {
