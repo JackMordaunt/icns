@@ -25,7 +25,7 @@ import (
 	"gioui.org/widget"
 	m "gioui.org/widget/material"
 	c "gioui.org/x/component"
-	"github.com/jackmordaunt/icns"
+	"github.com/jackmordaunt/icns/v2"
 	"github.com/ncruces/zenity"
 )
 

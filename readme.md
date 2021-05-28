@@ -19,6 +19,14 @@ Note: All icons within the `icns` are sized for high dpi retina screens, using t
 
 `preview` is a gui for displaying `icns` files cross-platform.
 
+### Go Tool
+
+```
+go install github.com/jackmordaunt/icns/cmd/preview@latest
+```
+
+### Clone
+
 ```
 git clone https://github.com/jackmordaunt/icns
 cd icns && go install ./cmd/preview
@@ -29,6 +37,14 @@ Note: Gio cannot be cross-compiled right now, so there are no `preview` builds i
 ![preview](docs/preview.png)
 
 ## Command Line
+
+### Go Tool
+
+```
+go install github.com/jackmordaunt/icns/cmd/icnsify@latest
+```
+
+### Clone
 
 ```
 git clone https://github.com/jackmordaunt/icns

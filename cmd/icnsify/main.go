@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jackmordaunt/icns"
+	"github.com/jackmordaunt/icns/v2"
 	"github.com/spf13/afero"
 
 	"github.com/spf13/pflag"
@@ -25,9 +25,24 @@ var (
 
 func main() {
 	var (
-		inputPath  = pflag.StringP("input", "i", "", "Input image for conversion to icns from jpg|png or visa versa.")
-		outputPath = pflag.StringP("output", "o", "", "Output path, defaults to <path/to/image>.(icns|png) depending on input.")
-		resize     = pflag.IntP("resize", "r", 5, "Quality of resize algorithm. Values range from 0 to 5, fastest to slowest execution time. Defaults to slowest for best quality.")
+		inputPath = pflag.StringP(
+			"input",
+			"i",
+			"",
+			"Input image for conversion to icns from jpg|png or visa versa.",
+		)
+		outputPath = pflag.StringP(
+			"output",
+			"o",
+			"",
+			"Output path, defaults to <path/to/image>.(icns|png) depending on input.",
+		)
+		resize = pflag.IntP(
+			"resize",
+			"r",
+			5,
+			"Quality of resize algorithm. Values range from 0 to 5, fastest to slowest execution time. Defaults to slowest for best quality.",
+		)
 	)
 	pflag.Parse()
 	in, out, algorithm := sanitiseInputs(*inputPath, *outputPath, *resize)
