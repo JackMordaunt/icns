@@ -24,6 +24,8 @@ git clone https://github.com/jackmordaunt/icns
 cd icns && go install ./cmd/preview
 ```
 
+Note: Gio cannot be cross-compiled right now, so there are no `preview` builds in releases.
+
 ![preview](docs/preview.png)
 
 ## Command Line
