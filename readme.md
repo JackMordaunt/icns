@@ -22,7 +22,7 @@ Note: All icons within the `icns` are sized for high dpi retina screens, using t
 ### Go Tool
 
 ```
-go install github.com/jackmordaunt/icns/cmd/preview@latest
+go install github.com/jackmordaunt/icns/v2/cmd/preview@latest
 ```
 
 ### Clone
@@ -41,7 +41,7 @@ Note: Gio cannot be cross-compiled right now, so there are no `preview` builds i
 ### Go Tool
 
 ```
-go install github.com/jackmordaunt/icns/cmd/icnsify@latest
+go install github.com/jackmordaunt/icns/v2/cmd/icnsify@latest
 ```
 
 ### Clone
@@ -64,6 +64,8 @@ Standard
 `icnsify -i icon.icns -o icon.png`
 
 ## Library
+
+`go get github.com/jackmordaunt/icns/v2`
 
 ```go
 func main() {
