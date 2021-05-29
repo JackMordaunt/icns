@@ -7,6 +7,7 @@ import (
 	"image"
 	"io"
 	"io/ioutil"
+	"sort"
 )
 
 var jpeg2000header = []byte{0x00, 0x00, 0x00, 0x0c, 0x6a, 0x50, 0x20, 0x20}
@@ -19,13 +20,10 @@ func Decode(r io.Reader) (image.Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	var biggest iconReader
-	for _, icon := range icons {
-		if icon.Size > biggest.Size {
-			biggest = icon
-		}
-	}
-	img, _, err := image.Decode(biggest.r)
+	sort.Slice(icons, func(ii, jj int) bool {
+		return icons[ii].OsType.Size > icons[jj].OsType.Size
+	})
+	img, _, err := image.Decode(icons[0].r)
 	if err != nil {
 		return nil, fmt.Errorf("decoding largest image: %w", err)
 	}
@@ -45,6 +43,13 @@ func DecodeAll(r io.Reader) (images []image.Image, err error) {
 		}
 		images = append(images, img)
 	}
+	sort.Slice(images, func(ii, jj int) bool {
+		var (
+			left  = images[ii].Bounds().Size()
+			right = images[jj].Bounds().Size()
+		)
+		return (left.X * left.Y) > (right.X * right.Y)
+	})
 	return images, nil
 }
 
