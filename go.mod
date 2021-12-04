@@ -8,7 +8,6 @@ require (
 	github.com/akavel/rsrc v0.10.2 // indirect
 	github.com/ncruces/zenity v0.7.4
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
-	github.com/pkg/errors v0.9.1
 	github.com/spf13/afero v1.6.0
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/exp v0.0.0-20210526181343-b47a03e3048a // indirect
