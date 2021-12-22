@@ -20,6 +20,7 @@ import (
 	"gioui.org/layout"
 	l "gioui.org/layout"
 	"gioui.org/op"
+	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget"
@@ -278,7 +279,7 @@ func (ui *UI) LayoutThumbnail(gtx C, ii int) D {
 			return D{}
 		}),
 		l.Expanded(func(gtx C) D {
-			pointer.Rect(image.Rectangle{Max: gtx.Constraints.Min}).Add(gtx.Ops)
+			defer clip.Rect(image.Rectangle{Max: gtx.Constraints.Min}).Push(gtx.Ops).Pop()
 			pointer.InputOp{
 				Tag:   ui.Icons[ii],
 				Types: pointer.Release,

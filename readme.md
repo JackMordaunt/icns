@@ -22,17 +22,18 @@ Note: All icons within the `icns` are sized for high dpi retina screens, using t
 ### Go Tool
 
 ```
-go install github.com/jackmordaunt/icns/v2/cmd/preview@latest
+go install github.com/jackmordaunt/icns/cmd/preview@latest
 ```
 
 ### Clone
 
 ```
 git clone https://github.com/jackmordaunt/icns
-cd icns && go install ./cmd/preview
+cd icns/cmd/preview && go install .
 ```
 
 Note: Gio cannot be cross-compiled right now, so there are no `preview` builds in releases.
+Note: `preview` has it's own `go.mod` and therefore is versioned independently (unversioned).
 
 ![preview](docs/preview.png)
 
