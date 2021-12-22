@@ -2,6 +2,7 @@ package icns
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/jpeg"
 	"image/png"
@@ -9,8 +10,6 @@ import (
 	"io/ioutil"
 	"reflect"
 	"testing"
-
-	"github.com/pkg/errors"
 )
 
 // TestDecode relies on Encode being correct.
@@ -351,7 +350,7 @@ func rect(x0, y0, x1, y1 int) image.Image {
 func _png(img image.Image) io.Reader {
 	buf := bytes.NewBuffer(nil)
 	if err := png.Encode(buf, img); err != nil {
-		panic(errors.Wrapf(err, "encoding png"))
+		panic(fmt.Errorf("encoding png: %w", err))
 	}
 	return buf
 }
@@ -359,7 +358,7 @@ func _png(img image.Image) io.Reader {
 func _jpg(img image.Image) io.Reader {
 	buf := bytes.NewBuffer(nil)
 	if err := jpeg.Encode(buf, img, nil); err != nil {
-		panic(errors.Wrapf(err, "encoding jpeg"))
+		panic(fmt.Errorf("encoding jpeg: %w", err))
 	}
 	return buf
 }
@@ -367,7 +366,7 @@ func _jpg(img image.Image) io.Reader {
 func _decode(r io.Reader) image.Image {
 	m, _, err := image.Decode(r)
 	if err != nil {
-		panic(errors.Wrapf(err, "decoding image"))
+		panic(fmt.Errorf("decoding image: %w", err))
 	}
 	return m
 }
