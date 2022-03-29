@@ -18,7 +18,8 @@ type Encoder struct {
 // NewEncoder initialises an encoder.
 func NewEncoder(wr io.Writer) *Encoder {
 	return &Encoder{
-		Wr: wr,
+		Wr:        wr,
+		Algorithm: MitchellNetravali,
 	}
 }
 
