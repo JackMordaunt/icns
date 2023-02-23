@@ -19,6 +19,6 @@ require (
 	github.com/randall77/makefat v0.0.0-20210315173500-7ddd0e42c844 // indirect
 	golang.org/x/exp v0.0.0-20210722180016-6781d3edade3 // indirect
 	golang.org/x/image v0.0.0-20210628002857-a66eb6448b8d // indirect
-	golang.org/x/sys v0.0.0-20210909193231-528a39cd75f3 // indirect
-	golang.org/x/text v0.3.6 // indirect
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
+	golang.org/x/text v0.3.8 // indirect
 )
