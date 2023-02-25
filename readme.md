@@ -45,6 +45,13 @@ Note: `preview` has it's own `go.mod` and therefore is versioned independently (
 go install github.com/jackmordaunt/icns/v2/cmd/icnsify@latest
 ```
 
+### [Scoop](https://scoop.sh/)
+
+```powershell
+scoop bucket add extras # Ensure bucket is added first
+scoop install icnsify
+```
+
 ### Clone
 
 ```
