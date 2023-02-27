@@ -59,6 +59,13 @@ scoop bucket add jackmordaunt https://github.com/jackmordaunt/scoop-bucket
 scoop install jackmordaunt/icns # Name is defaulted to repo name. 
 ```
 
+### [Brew](https://brew.sh)
+
+```sh
+brew tap jackmordaunt/homebrew-icnsify # Ensure tap is added first.
+brew install icnsify
+```
+
 ### Clone
 
 ```
