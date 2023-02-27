@@ -15,6 +15,12 @@ archives:
   - format_overrides:
     - goos: windows
       format: zip
+brews:
+  -
+   name: icnsify
+   tap:
+      owner: "jackmordaunt"
+      name: homebrew-tap
 checksum:
   name_template: "checksums.txt"
 snapshot:
