@@ -34,7 +34,7 @@ import (
 
 func main() {
 	ui := UI{
-		Window: app.NewWindow(app.Title("icnsify"), app.MinSize(unit.Dp(700), unit.Dp(250))),
+		Window: app.NewWindow(app.Title("icnsify"), app.MinSize(700, 250)),
 		Th:     m.NewTheme(gofont.Collection()),
 	}
 	if len(os.Args) > 1 {
@@ -221,15 +221,15 @@ func (ui *UI) LayoutSideBar(gtx C) D {
 	}.Layout(
 		gtx,
 		l.Rigid(func(gtx C) D {
-			return l.UniformInset(unit.Dp(5)).Layout(gtx, func(gtx C) D {
-				return m.Label(ui.Th, unit.Dp(15), ui.FileName).Layout(gtx)
+			return l.UniformInset((5)).Layout(gtx, func(gtx C) D {
+				return m.Label(ui.Th, (15), ui.FileName).Layout(gtx)
 			})
 		}),
 		l.Flexed(1, func(gtx C) D {
 			return ui.SideBar.Layout(gtx, len(ui.Icons), func(gtx C, ii int) D {
-				return l.UniformInset(unit.Dp(15)).Layout(gtx, func(gtx C) D {
+				return l.UniformInset((15)).Layout(gtx, func(gtx C) D {
 					cs := &gtx.Constraints
-					cs.Max.X = gtx.Px(ThumbnailWidth)
+					cs.Max.X = gtx.Dp(ThumbnailWidth)
 					return ui.LayoutThumbnail(gtx, ii)
 				})
 			})
@@ -242,7 +242,7 @@ func (ui *UI) LayoutPreviewArea(gtx C) D {
 	return l.Center.Layout(gtx, func(gtx C) D {
 		if ui.Preview == nil {
 			btn := m.Button(ui.Th, &ui.OpenBtn, "Open")
-			btn.TextSize = unit.Dp(25)
+			btn.TextSize = (25)
 			return btn.Layout(gtx)
 		}
 		return ui.Preview.Layout(gtx)
@@ -263,7 +263,7 @@ func (ui *UI) LayoutThumbnail(gtx C, ii int) D {
 					return ui.Icons[ii].Layout(gtx)
 				}),
 				l.Rigid(func(gtx C) D {
-					return m.Label(ui.Th, unit.Dp(15), strconv.Itoa(ii+1)).
+					return m.Label(ui.Th, (15), strconv.Itoa(ii+1)).
 						Layout(gtx)
 				}),
 			)
