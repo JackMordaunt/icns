@@ -52,6 +52,13 @@ scoop bucket add extras # Ensure bucket is added first
 scoop install icnsify
 ```
 
+Or from my personal bucket:
+
+```powershell
+scoop bucket add jackmordaunt https://github.com/jackmordaunt/scoop-bucket 
+scoop install jackmordaunt/icns # Name is defaulted to repo name. 
+```
+
 ### Clone
 
 ```
