@@ -52,6 +52,12 @@ scoop bucket add extras # Ensure bucket is added first
 scoop install icnsify
 ```
 
+### [Winget](https://learn.microsoft.com/en-us/windows/package-manager/)
+
+```powershell
+winget install icnsify
+```
+
 Or from my personal bucket:
 
 ```powershell
