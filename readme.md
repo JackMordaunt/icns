@@ -59,6 +59,12 @@ scoop bucket add jackmordaunt https://github.com/jackmordaunt/scoop-bucket
 scoop install jackmordaunt/icns # Name is defaulted to repo name. 
 ```
 
+### [Winget](https://learn.microsoft.com/en-us/windows/package-manager/)
+
+```powershell
+winget install icnsify
+```
+
 ### [Brew](https://brew.sh)
 
 ```sh
