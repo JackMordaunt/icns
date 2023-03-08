@@ -1,0 +1,4 @@
+LIBRARY ICNSThumbnailProvider
+EXPORTS
+DllCanUnloadNow   PRIVATE
+DllGetClassObject PRIVATE
