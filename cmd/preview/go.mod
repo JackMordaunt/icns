@@ -1,4 +1,4 @@
-module github.com/jackmordaunt/icns/preview
+module github.com/jackmordaunt/icns/cmd/preview
 
 go 1.17
 
