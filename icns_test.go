@@ -155,12 +155,12 @@ func TestSizesFromMax(t *testing.T) {
 		{
 			"small",
 			100,
-			[]uint{64, 32},
+			[]uint{64, 32, 16},
 		},
 		{
 			"large",
 			99999,
-			[]uint{1024, 512, 256, 128, 64, 32},
+			[]uint{1024, 512, 256, 128, 64, 32, 16},
 		},
 		{
 			"smallest",
@@ -250,7 +250,7 @@ func TestFindNearestSize(t *testing.T) {
 		},
 		{
 			"too small",
-			rect(0, 0, 16, 16),
+			rect(0, 0, 15, 15),
 			0,
 		},
 		{
