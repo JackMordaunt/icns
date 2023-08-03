@@ -68,7 +68,7 @@ winget install icnsify
 ### [Brew](https://brew.sh)
 
 ```sh
-brew tap jackmordaunt/homebrew-icnsify # Ensure tap is added first.
+brew tap jackmordaunt/homebrew-tap # Ensure tap is added first.
 brew install icnsify
 ```
 
