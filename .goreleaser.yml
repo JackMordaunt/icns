@@ -21,10 +21,11 @@ brews:
    repository:
       owner: "jackmordaunt"
       name: homebrew-tap
-scoop:
-  bucket:
-    owner: "jackmordaunt"
-    name: scoop-bucket
+scoops:
+  -
+    repository:
+      owner: "jackmordaunt"
+      name: scoop-bucket
 checksum:
   name_template: "checksums.txt"
 snapshot:
