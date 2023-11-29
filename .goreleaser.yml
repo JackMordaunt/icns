@@ -18,7 +18,7 @@ archives:
 brews:
   -
    name: icnsify
-   tap:
+   repository:
       owner: "jackmordaunt"
       name: homebrew-tap
 scoop:
