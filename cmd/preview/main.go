@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"gioui.org/app"
-	"gioui.org/font/gofont"
 	"gioui.org/io/key"
 	"gioui.org/io/pointer"
 	"gioui.org/io/system"
@@ -35,7 +34,7 @@ import (
 func main() {
 	ui := UI{
 		Window: app.NewWindow(app.Title("icnsify"), app.MinSize(700, 250)),
-		Th:     m.NewTheme(gofont.Collection()),
+		Th:     m.NewTheme(),
 	}
 	if len(os.Args) > 1 {
 		if file := os.Args[1]; filepath.Ext(file) == ".icns" {
