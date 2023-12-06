@@ -13,13 +13,13 @@ import (
 	"strings"
 
 	"gioui.org/app"
-	"gioui.org/font/gofont"
 	"gioui.org/io/key"
 	"gioui.org/io/pointer"
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	l "gioui.org/layout"
 	"gioui.org/op"
+	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget"
@@ -34,7 +34,7 @@ import (
 func main() {
 	ui := UI{
 		Window: app.NewWindow(app.Title("icnsify"), app.MinSize(unit.Dp(700), unit.Dp(250))),
-		Th:     m.NewTheme(gofont.Collection()),
+		Th:     m.NewTheme(),
 	}
 	if len(os.Args) > 1 {
 		if file := os.Args[1]; filepath.Ext(file) == ".icns" {
@@ -92,12 +92,9 @@ type ProcessedIconResult struct {
 // Loop initializes UI state and starts the render loop.
 func (ui *UI) Loop() error {
 	ui.ProcessedIcon = make(chan ProcessedIconResult)
-	var (
-		ops    op.Ops
-		events = ui.Window.Events()
-	)
-	for event := range events {
-		switch event := (event).(type) {
+	var ops op.Ops
+	for {
+		switch event := ui.Window.NextEvent().(type) {
 		case system.DestroyEvent:
 			return event.Err
 		case system.FrameEvent:
@@ -107,7 +104,6 @@ func (ui *UI) Loop() error {
 			event.Frame(gtx.Ops)
 		}
 	}
-	return nil
 }
 
 // Update the UI state.
@@ -137,12 +133,12 @@ func (ui *UI) Update(gtx C) {
 	}
 	for ii := range ui.Icons {
 		for _, event := range gtx.Events(ui.Icons[ii]) {
-			if c, ok := event.(pointer.Event); ok && c.Type == pointer.Release {
+			if c, ok := event.(pointer.Event); ok && c.Kind == pointer.Release {
 				ui.Preview = &ui.Icons[ii]
 			}
 		}
 	}
-	if ui.OpenBtn.Clicked() {
+	if ui.OpenBtn.Clicked(gtx) {
 		ui.Processing = true
 		go func() {
 			imgs, file, err := func() ([]image.Image, string, error) {
@@ -221,14 +217,14 @@ func (ui *UI) LayoutSideBar(gtx C) D {
 		gtx,
 		l.Rigid(func(gtx C) D {
 			return l.UniformInset(unit.Dp(5)).Layout(gtx, func(gtx C) D {
-				return m.Label(ui.Th, unit.Dp(15), ui.FileName).Layout(gtx)
+				return m.Label(ui.Th, 15, ui.FileName).Layout(gtx)
 			})
 		}),
 		l.Flexed(1, func(gtx C) D {
 			return ui.SideBar.Layout(gtx, len(ui.Icons), func(gtx C, ii int) D {
 				return l.UniformInset(unit.Dp(15)).Layout(gtx, func(gtx C) D {
 					cs := &gtx.Constraints
-					cs.Max.X = gtx.Px(ThumbnailWidth)
+					cs.Max.X = gtx.Dp(ThumbnailWidth)
 					return ui.LayoutThumbnail(gtx, ii)
 				})
 			})
@@ -241,7 +237,7 @@ func (ui *UI) LayoutPreviewArea(gtx C) D {
 	return l.Center.Layout(gtx, func(gtx C) D {
 		if ui.Preview == nil {
 			btn := m.Button(ui.Th, &ui.OpenBtn, "Open")
-			btn.TextSize = unit.Dp(25)
+			btn.TextSize = 25
 			return btn.Layout(gtx)
 		}
 		return ui.Preview.Layout(gtx)
@@ -262,7 +258,7 @@ func (ui *UI) LayoutThumbnail(gtx C, ii int) D {
 					return ui.Icons[ii].Layout(gtx)
 				}),
 				l.Rigid(func(gtx C) D {
-					return m.Label(ui.Th, unit.Dp(15), strconv.Itoa(ii+1)).
+					return m.Label(ui.Th, 15, strconv.Itoa(ii+1)).
 						Layout(gtx)
 				}),
 			)
@@ -278,10 +274,10 @@ func (ui *UI) LayoutThumbnail(gtx C, ii int) D {
 			return D{}
 		}),
 		l.Expanded(func(gtx C) D {
-			pointer.Rect(image.Rectangle{Max: gtx.Constraints.Min}).Add(gtx.Ops)
+			defer clip.Rect(image.Rectangle{Max: gtx.Constraints.Min}).Push(gtx.Ops).Pop()
 			pointer.InputOp{
 				Tag:   ui.Icons[ii],
-				Types: pointer.Release,
+				Kinds: pointer.Release,
 			}.Add(gtx.Ops)
 			return D{}
 		}),
