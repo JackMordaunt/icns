@@ -1,6 +1,6 @@
 module github.com/jackmordaunt/icns
 
-go 1.14
+go 1.21
 
 require (
 	gioui.org v0.0.0-20210504193539-82fff0178bed
@@ -10,6 +10,12 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/afero v1.6.0
 	github.com/spf13/pflag v1.0.5
+)
+
+require (
+	github.com/akavel/rsrc v0.8.0 // indirect
+	github.com/dchest/jsmin v0.0.0-20160823214000-faeced883947 // indirect
+	github.com/josephspurrier/goversioninfo v1.2.0 // indirect
 	golang.org/x/exp v0.0.0-20210503015746-b3083d562e1d // indirect
 	golang.org/x/image v0.0.0-20210504121937-7319ad40d33e // indirect
 	golang.org/x/sys v0.0.0-20210503173754-0981d6026fa6 // indirect
