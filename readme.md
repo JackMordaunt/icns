@@ -42,7 +42,7 @@ Note: `preview` has it's own `go.mod` and therefore is versioned independently (
 ### Go Tool
 
 ```
-go install github.com/jackmordaunt/icns/v2/cmd/icnsify@latest
+go install github.com/jackmordaunt/icns/cmd/icnsify@latest
 ```
 
 ### [Scoop](https://scoop.sh/)
@@ -93,7 +93,7 @@ Standard
 
 ## Library
 
-`go get github.com/jackmordaunt/icns/v2`
+`go get github.com/jackmordaunt/icns/v3`
 
 ```go
 func main() {
