@@ -1,4 +1,5 @@
 eliasnaur.com/font v0.0.0-20230308162249-dd43949cb42d h1:ARo7NCVvN2NdhLlJE9xAbKweuI9L6UgfTbYb0YwPacY=
+eliasnaur.com/font v0.0.0-20230308162249-dd43949cb42d/go.mod h1:OYVuxibdk9OSLX8vAqydtRPP87PyTFcT9uH3MlEGBQA=
 gioui.org v0.3.1 h1:hslYkrkIWvx28Mxe3A87opl+8s9mnWsnWmPDh11+zco=
 gioui.org v0.3.1/go.mod h1:2atiYR4upH71/6ehnh6XsUELa7JZOrOHHNMDxGBZF0Q=
 gioui.org/cpu v0.0.0-20210808092351-bfe733dd3334/go.mod h1:A8M0Cn5o+vY5LTMlnRoK3O5kG+rH0kWfJjeKd9QpBmQ=
@@ -17,8 +18,9 @@ github.com/dchest/jsmin v0.0.0-20220218165748-59f39799265f/go.mod h1:Dv9D0NUlAsa
 github.com/go-text/typesetting v0.0.0-20231126133128-3b7c9205d99e h1:XYK2AGBUaDkE9yG8FMOWCm0v/fjmcbkccKm1t3IIK/M=
 github.com/go-text/typesetting v0.0.0-20231126133128-3b7c9205d99e/go.mod h1:evDBbvNR/KaVFZ2ZlDSOWWXIUKq0wCOEtzLxRM8SG3k=
 github.com/go-text/typesetting-utils v0.0.0-20230616150549-2a7df14b6a22 h1:LBQTFxP2MfsyEDqSKmUBZaDuDHN1vpqDyOZjcqS7MYI=
-github.com/jackmordaunt/icns/v2 v2.2.7 h1:K/RbfvuzjmjVY5y4g+XENRs8ZZatwz4YnLHypa2KwQg=
-github.com/jackmordaunt/icns/v2 v2.2.7/go.mod h1:ovoTxGguSuoUGKMk5Nn3R7L7BgMQkylsO+bblBuI22A=
+github.com/go-text/typesetting-utils v0.0.0-20230616150549-2a7df14b6a22/go.mod h1:DDxDdQEnB70R8owOx3LVpEFvpMK9eeH1o2r0yZhFI9o=
+github.com/jackmordaunt/icns/v3 v3.0.0 h1:zGmeCscotL8gG6KWUNE2JfcAkn7UjgHLvHrhtO9iIgA=
+github.com/jackmordaunt/icns/v3 v3.0.0/go.mod h1:5sHL59nqTd2ynTnowxB/MDQFhKNqkK8X687uKNygaSQ=
 github.com/josephspurrier/goversioninfo v1.4.0 h1:Puhl12NSHUSALHSuzYwPYQkqa2E1+7SrtAPJorKK0C8=
 github.com/josephspurrier/goversioninfo v1.4.0/go.mod h1:JWzv5rKQr+MmW+LvM412ToT/IkYDZjaclF2pKDss8IY=
 github.com/ncruces/zenity v0.10.10 h1:V/rtAhr5QLdDThahOkm7EYlnw4RuEsf7oN+Xb6lz1j0=
@@ -33,6 +35,7 @@ github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+
 github.com/stretchr/testify v1.6.1 h1:hDPOHmpOpP40lSULcqw7IrRb/u7w6RpDC9399XyoNd0=
 github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 go.uber.org/goleak v1.2.1 h1:NBol2c7O1ZokfZ0LEU9K6Whx/KnwvepVetCUhtKja4A=
+go.uber.org/goleak v1.2.1/go.mod h1:qlT2yGI9QafXHhZZLxlSuNsMw3FFLxBr+tBRlmO1xH4=
 golang.org/x/exp v0.0.0-20231127185646-65229373498e h1:Gvh4YaCaXNs6dKTlfgismwWZKyjVZXwOPfIyUaqU3No=
 golang.org/x/exp v0.0.0-20231127185646-65229373498e/go.mod h1:iRJReGqOEeBhDZGkGbynYwcHlctCvnjTYIamk7uXpHI=
 golang.org/x/exp/shiny v0.0.0-20231127185646-65229373498e h1:OcpyLYky9rjmUp6ZYOow6ky00AmhIM2pL3vTv1lQErg=
