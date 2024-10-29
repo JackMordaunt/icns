@@ -137,7 +137,7 @@ func biggestSide(img image.Image) uint {
 func sizesFrom(max uint) []uint {
 	for ii, s := range sizes {
 		if s <= max {
-			return sizes[ii:len(sizes)]
+			return sizes[ii:]
 		}
 	}
 	return []uint{}
