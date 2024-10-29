@@ -7,7 +7,6 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
-	"io/ioutil"
 	"reflect"
 	"testing"
 )
@@ -88,7 +87,7 @@ func TestEncode(t *testing.T) {
 	}{
 		{
 			"nil image",
-			ioutil.Discard,
+			io.Discard,
 			nil,
 			true,
 		},
@@ -100,37 +99,37 @@ func TestEncode(t *testing.T) {
 		},
 		{
 			"valid sqaure",
-			ioutil.Discard,
+			io.Discard,
 			rect(0, 0, 50, 50),
 			false,
 		},
 		{
 			"valid non-square",
-			ioutil.Discard,
+			io.Discard,
 			rect(0, 0, 10, 50),
 			false,
 		},
 		{
 			"valid non-square, weird dimensions",
-			ioutil.Discard,
+			io.Discard,
 			rect(0, 0, 17, 77),
 			false,
 		},
 		{
 			"invalid zero img",
-			ioutil.Discard,
+			io.Discard,
 			rect(0, 0, 0, 0),
 			true,
 		},
 		{
 			"invalid small img",
-			ioutil.Discard,
+			io.Discard,
 			rect(0, 0, 1, 1),
 			true,
 		},
 		{
 			"valid square not at origin point",
-			ioutil.Discard,
+			io.Discard,
 			rect(10, 10, 50, 50),
 			false,
 		},

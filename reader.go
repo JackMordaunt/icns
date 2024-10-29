@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"image"
 	"io"
-	"io/ioutil"
 	"sort"
 )
 
@@ -54,7 +53,7 @@ func DecodeAll(r io.Reader) (images []image.Image, err error) {
 }
 
 func decode(r io.Reader) (icons []iconReader, err error) {
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
