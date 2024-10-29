@@ -2,6 +2,7 @@ package icns
 
 import (
 	"errors"
+	"fmt"
 	"image"
 	"io"
 	"sync"
@@ -143,10 +144,32 @@ func sizesFrom(max uint) []uint {
 	return []uint{}
 }
 
+// ImageFormat specifies the type of image data associated with an icon.
+type ImageFormat int
+
+const (
+	ImageFormatPNG ImageFormat = iota
+	ImageFormatJPEG2000
+)
+
+func (f ImageFormat) String() string {
+	switch f {
+	case ImageFormatPNG:
+		return "PNG"
+	case ImageFormatJPEG2000:
+		return "JPEG 2000"
+	}
+	return fmt.Sprintf("unknown format %d", f)
+}
+
 // OsType is a 4 character identifier used to differentiate icon types.
 type OsType struct {
 	ID   string
 	Size uint
+}
+
+func (t OsType) String() string {
+	return t.ID
 }
 
 var osTypes = []OsType{
