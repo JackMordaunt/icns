@@ -144,6 +144,16 @@ func sizesFrom(max uint) []uint {
 	return []uint{}
 }
 
+// IconDescription describes an icon.
+type IconDescription struct {
+	OsType
+	ImageFormat
+}
+
+func (desc IconDescription) String() string {
+	return fmt.Sprintf("%s (%s)", desc.OsType, desc.ImageFormat)
+}
+
 // ImageFormat specifies the type of image data associated with an icon.
 type ImageFormat int
 
@@ -169,7 +179,7 @@ type OsType struct {
 }
 
 func (t OsType) String() string {
-	return t.ID
+	return fmt.Sprintf("%s %d", t.ID, t.Size)
 }
 
 var osTypes = []OsType{
