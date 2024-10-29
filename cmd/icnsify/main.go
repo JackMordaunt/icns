@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"image"
 	"image/jpeg"
 	"image/png"
@@ -69,6 +70,22 @@ func main() {
 		}
 		defer outputf.Close()
 		output = outputf
+	}
+	if filepath.Ext(*inputPath) == ".icns" {
+		by, err := io.ReadAll(input)
+		if err != nil {
+			slog.Error("probing file: reading file", "err", err)
+			return
+		}
+		icons, err := icns.Probe(bytes.NewReader(by))
+		if err != nil {
+			slog.Error("probing file", "err", err)
+			return
+		}
+		for _, icon := range icons {
+			slog.Info("found", "icon", icon)
+		}
+		input = bytes.NewReader(by)
 	}
 	img, format, err := image.Decode(input)
 	if err != nil {
