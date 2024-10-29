@@ -57,7 +57,7 @@ func main() {
 		}
 		defer sourcef.Close()
 		input = sourcef
-		if err := fs.MkdirAll(filepath.Dir(out), 0755); err != nil {
+		if err := fs.MkdirAll(filepath.Dir(out), 0o755); err != nil {
 			log.Fatalf("preparing output directory: %v", err)
 		}
 		outputf, err := fs.Create(out)
