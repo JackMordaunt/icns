@@ -5,7 +5,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,23 +53,27 @@ func main() {
 		}
 		sourcef, err := fs.Open(in)
 		if err != nil {
-			log.Fatalf("opening source image: %v", err)
+			slog.Error("opening source image", "err", err)
+			return
 		}
 		defer sourcef.Close()
 		input = sourcef
 		if err := fs.MkdirAll(filepath.Dir(out), 0o755); err != nil {
-			log.Fatalf("preparing output directory: %v", err)
+			slog.Error("preparing output directory: %v", "err", err)
+			return
 		}
 		outputf, err := fs.Create(out)
 		if err != nil {
-			log.Fatalf("creating icns file: %v", err)
+			slog.Error("creating icns file", "err", err)
+			return
 		}
 		defer outputf.Close()
 		output = outputf
 	}
 	img, format, err := image.Decode(input)
 	if err != nil {
-		log.Fatalf("decoding input: %v", err)
+		slog.Error("decoding input", "err", err)
+		return
 	}
 	if format == "icns" {
 		imageType := strings.ToLower(filepath.Ext(out))
@@ -77,13 +81,13 @@ func main() {
 			imageType = ".png"
 		}
 		if err := encoders[imageType](output, img); err != nil {
-			log.Fatalf("encoding %s: %v", imageType, err)
+			slog.Error("encoding", "err", err, "type", imageType)
 		}
 	} else {
 		enc := icns.NewEncoder(output).
 			WithAlgorithm(algorithm)
 		if err := enc.Encode(img); err != nil {
-			log.Fatalf("encoding icns: %v", err)
+			slog.Error("encoding icns", "err", err)
 		}
 	}
 }
