@@ -23,6 +23,9 @@ func Decode(r io.Reader) (image.Image, error) {
 		return icons[ii].OsType.Size > icons[jj].OsType.Size
 	})
 	icon := icons[0]
+	if icon.IconDescription.ImageFormat == ImageFormatJPEG2000 {
+		return nil, fmt.Errorf("decoding largest image (icon %s %s): unsupported format", icon.OsType, icon.ImageFormat)
+	}
 	img, _, err := image.Decode(icon.r)
 	if err != nil {
 		return nil, fmt.Errorf("decoding largest image (icon %s %s): %w", icon.OsType, icon.ImageFormat, err)
@@ -47,6 +50,9 @@ func DecodeAll(r io.Reader) (images []image.Image, err error) {
 			return nil, fmt.Errorf("decoding icon %s %s: %w", icon.OsType, icon.ImageFormat, err)
 		}
 		images = append(images, img)
+	}
+	if len(images) == 0 {
+		return nil, fmt.Errorf("no supported icons found")
 	}
 	sort.Slice(images, func(ii, jj int) bool {
 		var (
