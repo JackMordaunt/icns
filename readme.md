@@ -139,7 +139,11 @@ go test ./... ./cmd/preview/... ./cmd/shell-extension/...
 
 The two command modules require the library at its latest tag; the versioned `replace` in `go.work` resolves that tag to the working tree inside the checkout, which is also what lets the tree build before the tag exists.
 
-Releasing: tag the root module (`vX.Y.Z`), which releases the library and `icnsify` together. Then run `go mod tidy` in `cmd/preview` and `cmd/shell-extension` with `GOWORK=off` so their `go.sum` files learn the new version, and bump the `replace` line in `go.work` to match.
+Releasing: tag the root module (`vX.Y.Z`), which releases the library and `icnsify` together. Then tidy the two command modules outside the workspace so their `go.sum` files learn the new version, and bump the `replace` line in `go.work` to match:
+
+```powershell
+$env:GOWORK = 'off'; go mod tidy; Remove-Item Env:GOWORK   # in cmd/preview, then cmd/shell-extension
+```
 
 ## Roadmap
 
