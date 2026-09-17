@@ -24,7 +24,7 @@ func Decode(r io.Reader) (image.Image, error) {
 	})
 	icon := icons[0]
 	if icon.IconDescription.ImageFormat == ImageFormatJPEG2000 {
-		return nil, fmt.Errorf("decoding largest image (icon %s %s): unsupported format", icon.OsType, icon.ImageFormat)
+		return nil, fmt.Errorf("%w: largest icon %s is %s", ErrUnsupportedFormat, icon.OsType, icon.ImageFormat)
 	}
 	img, _, err := image.Decode(icon.r)
 	if err != nil {
@@ -52,7 +52,7 @@ func DecodeAll(r io.Reader) (images []image.Image, err error) {
 		images = append(images, img)
 	}
 	if len(images) == 0 {
-		return nil, fmt.Errorf("no supported icons found")
+		return nil, fmt.Errorf("%w: only %s icons present", ErrUnsupportedFormat, ImageFormatJPEG2000)
 	}
 	sort.Slice(images, func(ii, jj int) bool {
 		var (
@@ -76,54 +76,61 @@ func Probe(r io.Reader) (desc []IconDescription, _ error) {
 	return desc, nil
 }
 
-// decode identifies the icons in the icns (without decoding the image data).
+// elementHeaderSize is the size of the type and length fields that begin
+// every element, the file header included.
+const elementHeaderSize = 8
+
+// decode identifies the icons in the icns without decoding the image data.
+//
+// An icns file is a sequence of elements, each a 4-byte type followed by a
+// 4-byte big-endian length that counts the whole element, header included.
+// The file itself is one such element of type "icns" enclosing the rest.
+// Every length is validated against the data actually present so malformed
+// or truncated input yields an error rather than a panic or an endless loop.
 func decode(r io.Reader) (icons []iconReader, err error) {
 	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
-	var (
-		header   = data[0:4]
-		fileSize = binary.BigEndian.Uint32(data[4:8])
-		read     = uint32(8)
-	)
-	if string(header) != "icns" {
-		return nil, fmt.Errorf("invalid header for icns file")
+	if len(data) < elementHeaderSize || string(data[0:4]) != "icns" {
+		return nil, ErrInvalidHeader
 	}
-	for read < fileSize {
-		next := data[read : read+4]
-		read += 4
-		switch string(next) {
-		case "TOC ":
-			tocSize := binary.BigEndian.Uint32(data[read : read+4])
-			read += tocSize - 4 // size includes header and size fields
+	fileSize := int(binary.BigEndian.Uint32(data[4:8]))
+	if fileSize > len(data) {
+		return nil, fmt.Errorf("%w: header declares %d bytes but only %d are present", ErrMalformed, fileSize, len(data))
+	}
+	data = data[:fileSize]
+	for offset := elementHeaderSize; offset < len(data); {
+		if len(data)-offset < elementHeaderSize {
+			return nil, fmt.Errorf("%w: truncated element header at offset %d", ErrMalformed, offset)
+		}
+		var (
+			id   = string(data[offset : offset+4])
+			size = int(binary.BigEndian.Uint32(data[offset+4 : offset+8]))
+		)
+		if size < elementHeaderSize || size > len(data)-offset {
+			return nil, fmt.Errorf("%w: element %q at offset %d declares %d bytes", ErrMalformed, id, offset, size)
+		}
+		payload := data[offset+elementHeaderSize : offset+size]
+		offset += size
+		// Elements other than icons ("TOC ", "icnV", "name", "info", ...)
+		// and icons of legacy types carry nothing we can decode; skip them.
+		if !isOsType(id) || len(payload) == 0 {
 			continue
-		case "icnV":
-			read += 4
-			continue
 		}
-		dataSize := binary.BigEndian.Uint32(data[read : read+4])
-		read += 4
-		if dataSize == 0 {
-			continue // no content, we're not interested
+		ir := iconReader{
+			IconDescription: IconDescription{
+				OsType: osTypeFromID(id),
+			},
+			r: bytes.NewReader(payload),
 		}
-		iconData := data[read : read+dataSize-8]
-		read += dataSize - 8 // size includes header and size fields
-		if isOsType(string(next)) {
-			ir := iconReader{
-				IconDescription: IconDescription{
-					OsType: osTypeFromID(string(next)),
-				},
-				r: bytes.NewBuffer(iconData),
-			}
-			if bytes.Equal(iconData[:8], jpeg2000header) {
-				ir.ImageFormat = ImageFormatJPEG2000
-			}
-			icons = append(icons, ir)
+		if bytes.HasPrefix(payload, jpeg2000header) {
+			ir.ImageFormat = ImageFormatJPEG2000
 		}
+		icons = append(icons, ir)
 	}
 	if len(icons) == 0 {
-		return nil, fmt.Errorf("no icons found")
+		return nil, ErrNoIcons
 	}
 	return icons, nil
 }
