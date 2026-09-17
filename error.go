@@ -29,7 +29,7 @@ type ErrImageTooSmall struct {
 }
 
 func (err ErrImageTooSmall) Error() string {
-	b := err.image.Bounds().Max
+	b := err.image.Bounds()
 	format := "image is too small: %dx%d, need at least %dx%d"
-	return fmt.Sprintf(format, b.X, b.Y, err.need, err.need)
+	return fmt.Sprintf(format, b.Dx(), b.Dy(), err.need, err.need)
 }

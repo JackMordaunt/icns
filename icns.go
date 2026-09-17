@@ -123,15 +123,11 @@ func findNearestSize(img image.Image) uint {
 	return 0
 }
 
+// biggestSide returns the larger dimension of img. Bounds need not start at
+// the origin, so measure the rectangle rather than its far corner.
 func biggestSide(img image.Image) uint {
-	var size uint
 	b := img.Bounds()
-	w, h := uint(b.Max.X), uint(b.Max.Y)
-	size = w
-	if h > size {
-		size = h
-	}
-	return size
+	return uint(max(b.Dx(), b.Dy(), 0))
 }
 
 // sizesFrom returns a slice containing the sizes less than and including max.
