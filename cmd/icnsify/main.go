@@ -14,12 +14,9 @@ import (
 	"strings"
 
 	"github.com/jackmordaunt/icns/v4"
-	"github.com/spf13/afero"
 
 	"github.com/spf13/pflag"
 )
-
-var fs = afero.NewOsFs()
 
 // errUsage signals that no work was requested; usage has been printed.
 var errUsage = errors.New("usage")
@@ -77,16 +74,16 @@ func run() error {
 			usage()
 			return errUsage
 		}
-		sourcef, err := fs.Open(in)
+		sourcef, err := os.Open(in)
 		if err != nil {
 			return fmt.Errorf("opening source image: %w", err)
 		}
 		defer sourcef.Close()
 		input = sourcef
-		if err := fs.MkdirAll(filepath.Dir(out), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
 			return fmt.Errorf("preparing output directory: %w", err)
 		}
-		outputf, err := fs.Create(out)
+		outputf, err := os.Create(out)
 		if err != nil {
 			return fmt.Errorf("creating output file: %w", err)
 		}
