@@ -2,7 +2,6 @@ go 1.21.5
 
 use (
 	.
-	./cmd/icnsify
 	./cmd/preview
 	./cmd/shell-extension
 )
