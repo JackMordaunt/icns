@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"flag"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -14,8 +15,6 @@ import (
 	"strings"
 
 	"github.com/jackmordaunt/icns/v4"
-
-	"github.com/spf13/pflag"
 )
 
 // errUsage signals that no work was requested; usage has been printed.
@@ -32,26 +31,18 @@ func main() {
 
 func run() error {
 	var (
-		inputPath = pflag.StringP(
-			"input",
-			"i",
-			"",
-			"Input image for conversion to icns from jpg|png or visa versa.",
-		)
-		outputPath = pflag.StringP(
-			"output",
-			"o",
-			"",
-			"Output path, defaults to <path/to/image>.(icns|png) depending on input.",
-		)
-		resize = pflag.IntP(
-			"resize",
-			"r",
-			5,
-			"Quality of resize algorithm. Values range from 0 to 5, fastest to slowest execution time. Defaults to slowest for best quality.",
-		)
+		inputPath  string
+		outputPath string
+		resize     int
 	)
-	pflag.Parse()
+	stringFlag(&inputPath, "input", "i", "",
+		"Input image for conversion to icns from jpg|png or vice versa.")
+	stringFlag(&outputPath, "output", "o", "",
+		"Output path, defaults to <path/to/image>.(icns|png) depending on input.")
+	intFlag(&resize, "resize", "r", 5,
+		"Quality of resize algorithm, 0 to 5 from fastest to slowest.")
+	flag.Usage = usage
+	flag.Parse()
 
 	var (
 		input  io.Reader
@@ -60,13 +51,13 @@ func run() error {
 	// An explicit --input wins; otherwise a non-terminal stdin means we are
 	// part of a pipeline and both paths are ignored.
 	piping := false
-	if *inputPath == "" {
+	if inputPath == "" {
 		var err error
 		if piping, err = stdinIsPipe(); err != nil {
 			return err
 		}
 	}
-	in, out, algorithm := sanitiseInputs(*inputPath, *outputPath, *resize)
+	in, out, algorithm := sanitiseInputs(inputPath, outputPath, resize)
 	if piping {
 		input, output = os.Stdin, os.Stdout
 	} else {
