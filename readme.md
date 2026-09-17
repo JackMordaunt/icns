@@ -131,7 +131,13 @@ The repository is a Go workspace of three modules:
 | `github.com/jackmordaunt/icns/cmd/preview` | The Gio GUI | Keeps Gio's dependency tree out of library consumers' module graphs |
 | `github.com/jackmordaunt/icns/cmd/shell-extension` | The Windows DLL | Windows-only and needs cgo (mingw) |
 
-`go.work` ties them together, so from the repository root `go build ./...` and `go test ./...` cover every module against the working-tree library, and gopls sees the whole repository. The two command modules require the library at its latest tag; the versioned `replace` in `go.work` resolves that tag to the working tree inside the checkout, which is also what lets the tree build before the tag exists.
+`go.work` ties them together, so every build inside the checkout uses the working-tree library and gopls sees the whole repository. Note that `./...` only matches the module you are in; to cover all three from the root, name them:
+
+```
+go test ./... ./cmd/preview/... ./cmd/shell-extension/...
+```
+
+The two command modules require the library at its latest tag; the versioned `replace` in `go.work` resolves that tag to the working tree inside the checkout, which is also what lets the tree build before the tag exists.
 
 Releasing: tag the root module (`vX.Y.Z`), which releases the library and `icnsify` together. Then run `go mod tidy` in `cmd/preview` and `cmd/shell-extension` with `GOWORK=off` so their `go.sum` files learn the new version, and bump the `replace` line in `go.work` to match.
 
