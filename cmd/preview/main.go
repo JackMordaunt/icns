@@ -169,7 +169,7 @@ func (ui *UI) Update(gtx C) {
 			// TODO(jfm): push to dismissable error stack.
 			log.Printf("loading icns file: %v", r.Err)
 		} else {
-			ui.Icons = ui.Icons[:]
+			ui.Icons = ui.Icons[:0]
 			for _, img := range r.Imgs {
 				ui.Icons = append(ui.Icons, widget.Image{
 					Src:      paint.NewImageOp(img),
@@ -344,5 +344,5 @@ func LoadImage(path string) ([]image.Image, error) {
 
 // UseExt replaces any existing file extension with the provided one.
 func UseExt(s, ext string) string {
-	return strings.Replace(s, filepath.Ext(s), ".icns", 1)
+	return strings.TrimSuffix(s, filepath.Ext(s)) + ext
 }
