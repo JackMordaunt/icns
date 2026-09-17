@@ -1,6 +1,6 @@
 module github.com/jackmordaunt/icns/cmd/preview
 
-go 1.21.5
+go 1.25.0
 
 require (
 	gioui.org v0.3.1
@@ -20,7 +20,7 @@ require (
 	github.com/randall77/makefat v0.0.0-20210315173500-7ddd0e42c844 // indirect
 	golang.org/x/exp v0.0.0-20231127185646-65229373498e // indirect
 	golang.org/x/exp/shiny v0.0.0-20231127185646-65229373498e // indirect
-	golang.org/x/image v0.14.0 // indirect
+	golang.org/x/image v0.41.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 )
