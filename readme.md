@@ -137,12 +137,12 @@ The repository is a Go workspace of three modules:
 go test ./... ./cmd/preview/... ./cmd/shell-extension/...
 ```
 
-The two command modules require the library at its latest tag; the versioned `replace` in `go.work` resolves that tag to the working tree inside the checkout, which is also what lets the tree build before the tag exists.
+The two command modules require the library at a published tag. Inside the workspace that requirement only shapes the module graph; the code always comes from the working tree, so the tag can lag behind without affecting development.
 
-Releasing: tag the root module (`vX.Y.Z`), which releases the library and `icnsify` together. Then tidy the two command modules outside the workspace so their `go.sum` files learn the new version, and bump the `replace` line in `go.work` to match:
+Releasing: tag the root module (`vX.Y.Z`), which releases the library and `icnsify` together. When `go install .../cmd/preview@latest`, or a shell extension built outside the checkout, should pick up a newer library, bump that module's requirement and tidy it outside the workspace:
 
 ```powershell
-$env:GOWORK = 'off'; go mod tidy; Remove-Item Env:GOWORK   # in cmd/preview, then cmd/shell-extension
+$env:GOWORK = 'off'; go get github.com/jackmordaunt/icns/v4@latest; go mod tidy; Remove-Item Env:GOWORK
 ```
 
 ## Roadmap
