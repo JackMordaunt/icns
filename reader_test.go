@@ -92,6 +92,25 @@ func TestDecodeSkipsNonIconElements(t *testing.T) {
 	}
 }
 
+func TestDecodeFallsBackPastJPEG2000(t *testing.T) {
+	t.Parallel()
+	data := file(
+		element("ic10", jpeg2000header), // Largest, but undecodable.
+		element("ic07", pngBytes(t, 128)),
+	)
+	img, err := Decode(bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := img.Bounds().Dx(); got != 128 {
+		t.Fatalf("Decode returned a %dpx icon, want the 128px PNG", got)
+	}
+	all, err := DecodeAll(bytes.NewReader(data))
+	if err != nil || len(all) != 1 {
+		t.Fatalf("DecodeAll = %d images, %v; want 1, nil", len(all), err)
+	}
+}
+
 // FuzzDecode checks that arbitrary input never panics or hangs the decoder.
 func FuzzDecode(f *testing.F) {
 	var valid bytes.Buffer

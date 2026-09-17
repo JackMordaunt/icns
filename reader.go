@@ -11,9 +11,9 @@ import (
 
 var jpeg2000header = []byte{0x00, 0x00, 0x00, 0x0c, 0x6a, 0x50, 0x20, 0x20}
 
-// Decode finds the largest icon listed in the icns file and returns it,
-// ignoring all other sizes. The format returned will be PNG. JPEG 2000
-// icons are ignored due to lack of image decoding support.
+// Decode returns the largest decodable icon in the icns file, ignoring all
+// other sizes. JPEG 2000 icons are skipped due to lack of image decoding
+// support, so the result may be smaller than the largest icon present.
 func Decode(r io.Reader) (image.Image, error) {
 	icons, err := decode(r)
 	if err != nil {
@@ -22,15 +22,17 @@ func Decode(r io.Reader) (image.Image, error) {
 	sort.Slice(icons, func(ii, jj int) bool {
 		return icons[ii].OsType.Size > icons[jj].OsType.Size
 	})
-	icon := icons[0]
-	if icon.IconDescription.ImageFormat == ImageFormatJPEG2000 {
-		return nil, fmt.Errorf("%w: largest icon %s is %s", ErrUnsupportedFormat, icon.OsType, icon.ImageFormat)
+	for _, icon := range icons {
+		if icon.ImageFormat == ImageFormatJPEG2000 {
+			continue
+		}
+		img, _, err := image.Decode(icon.r)
+		if err != nil {
+			return nil, fmt.Errorf("decoding icon %s %s: %w", icon.OsType, icon.ImageFormat, err)
+		}
+		return img, nil
 	}
-	img, _, err := image.Decode(icon.r)
-	if err != nil {
-		return nil, fmt.Errorf("decoding largest image (icon %s %s): %w", icon.OsType, icon.ImageFormat, err)
-	}
-	return img, nil
+	return nil, fmt.Errorf("%w: only %s icons present", ErrUnsupportedFormat, ImageFormatJPEG2000)
 }
 
 // DecodeAll extracts all icon resolutions present in the icns data that
