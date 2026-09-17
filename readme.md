@@ -2,7 +2,7 @@
 
 Easily convert `.jpg` and `.png` to `.icns` with the command line tool `icnsify`, or use the library to convert from any `image.Image` to `.icns`.
 
-`go get github.com/jackmordaunt/icns`
+`go get github.com/jackmordaunt/icns/v4`
 
 `icns` files allow for high resolution icons to make your apps look sexy. The most common ways to generate icns files are:
 
@@ -33,16 +33,20 @@ cd icns/cmd/preview && go install .
 ```
 
 Note: Gio cannot be cross-compiled right now, so there are no `preview` builds in releases.
-Note: `preview` has it's own `go.mod` and therefore is versioned independently (unversioned).
+Note: `preview` has its own `go.mod` and therefore is versioned independently (unversioned).
 
 ![preview](docs/preview.png)
+
+## Windows Explorer thumbnails
+
+`cmd/shell-extension` is a Windows shell extension that renders `.icns` thumbnails in Explorer. It is a COM server written in Go and built as a DLL; see [its readme](cmd/shell-extension/readme.md) for build and registration steps.
 
 ## Command Line
 
 ### Go Tool
 
 ```
-go install github.com/jackmordaunt/icns/cmd/icnsify@latest
+go install github.com/jackmordaunt/icns/v4/cmd/icnsify@latest
 ```
 
 ### [Scoop](https://scoop.sh/)
@@ -93,7 +97,7 @@ Standard
 
 ## Library
 
-`go get github.com/jackmordaunt/icns/v3`
+`go get github.com/jackmordaunt/icns/v4`
 
 ```go
 func main() {
@@ -117,6 +121,20 @@ func main() {
 }
 ```
 
+## Development
+
+The repository is a Go workspace of three modules:
+
+| Module | Contents | Why separate |
+|---|---|---|
+| `github.com/jackmordaunt/icns/v4` (root) | The library and `cmd/icnsify` | Dependency-free apart from `nfnt/resize`; one tag versions both |
+| `github.com/jackmordaunt/icns/cmd/preview` | The Gio GUI | Keeps Gio's dependency tree out of library consumers' module graphs |
+| `github.com/jackmordaunt/icns/cmd/shell-extension` | The Windows DLL | Windows-only and needs cgo (mingw) |
+
+`go.work` ties them together, so from the repository root `go build ./...` and `go test ./...` cover every module against the working-tree library, and gopls sees the whole repository. The two command modules require the library at its latest tag; the versioned `replace` in `go.work` resolves that tag to the working tree inside the checkout, which is also what lets the tree build before the tag exists.
+
+Releasing: tag the root module (`vX.Y.Z`), which releases the library and `icnsify` together. Then run `go mod tidy` in `cmd/preview` and `cmd/shell-extension` with `GOWORK=off` so their `go.sum` files learn the new version, and bump the `replace` line in `go.work` to match.
+
 ## Roadmap
 
 - [x] Encoder: `image.Image -> .icns`
@@ -125,7 +143,8 @@ func main() {
   - [x] Pipe support
   - [x] Decoding
 - [x] Implement Decoder: `.icns -> image.Image`
-- [ ] Symmetric test: `decode(encode(img)) == img`
+- [x] Symmetric test: `decode(encode(img)) == img`
+- [x] Windows Explorer thumbnails
 
 ## Coffee
 
