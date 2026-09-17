@@ -5,17 +5,14 @@ import (
 	"os"
 )
 
-func init() {
+// stdinIsPipe reports whether stdin is a pipe or redirected file rather than
+// an interactive terminal. It deliberately ignores the stream's current size:
+// a producer such as `cat icon.png | icnsify` may not have written anything
+// by the time we look, and a zero size would wrongly read as "no input".
+func stdinIsPipe() (bool, error) {
 	info, err := os.Stdin.Stat()
 	if err != nil {
-		panic(fmt.Sprintf("getting info on stdin file descriptor: %v", err))
+		return false, fmt.Errorf("getting info on stdin file descriptor: %w", err)
 	}
-	if (info.Mode() & os.ModeCharDevice) == os.ModeCharDevice {
-		return
-	}
-	if info.Size() > 0 {
-		piping = true
-		input = os.Stdin
-		output = os.Stdout
-	}
+	return info.Mode()&os.ModeCharDevice == 0, nil
 }

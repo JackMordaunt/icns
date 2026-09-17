@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"image"
 	"image/jpeg"
 	"image/png"
@@ -17,14 +19,21 @@ import (
 	"github.com/spf13/pflag"
 )
 
-var (
-	fs     = afero.NewOsFs()
-	piping bool
-	input  io.Reader
-	output io.Writer
-)
+var fs = afero.NewOsFs()
+
+// errUsage signals that no work was requested; usage has been printed.
+var errUsage = errors.New("usage")
 
 func main() {
+	if err := run(); err != nil {
+		if !errors.Is(err, errUsage) {
+			slog.Error("icnsify failed", "err", err)
+		}
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	var (
 		inputPath = pflag.StringP(
 			"input",
@@ -46,41 +55,52 @@ func main() {
 		)
 	)
 	pflag.Parse()
+
+	var (
+		input  io.Reader
+		output io.Writer
+	)
+	// An explicit --input wins; otherwise a non-terminal stdin means we are
+	// part of a pipeline and both paths are ignored.
+	piping := false
+	if *inputPath == "" {
+		var err error
+		if piping, err = stdinIsPipe(); err != nil {
+			return err
+		}
+	}
 	in, out, algorithm := sanitiseInputs(*inputPath, *outputPath, *resize)
-	if !piping {
+	if piping {
+		input, output = os.Stdin, os.Stdout
+	} else {
 		if in == "" {
 			usage()
-			os.Exit(0)
+			return errUsage
 		}
 		sourcef, err := fs.Open(in)
 		if err != nil {
-			slog.Error("opening source image", "err", err)
-			return
+			return fmt.Errorf("opening source image: %w", err)
 		}
 		defer sourcef.Close()
 		input = sourcef
 		if err := fs.MkdirAll(filepath.Dir(out), 0o755); err != nil {
-			slog.Error("preparing output directory: %v", "err", err)
-			return
+			return fmt.Errorf("preparing output directory: %w", err)
 		}
 		outputf, err := fs.Create(out)
 		if err != nil {
-			slog.Error("creating icns file", "err", err)
-			return
+			return fmt.Errorf("creating output file: %w", err)
 		}
 		defer outputf.Close()
 		output = outputf
 	}
-	if filepath.Ext(*inputPath) == ".icns" {
+	if filepath.Ext(in) == ".icns" {
 		by, err := io.ReadAll(input)
 		if err != nil {
-			slog.Error("probing file: reading file", "err", err)
-			return
+			return fmt.Errorf("probing file: reading file: %w", err)
 		}
 		icons, err := icns.Probe(bytes.NewReader(by))
 		if err != nil {
-			slog.Error("probing file", "err", err)
-			return
+			return fmt.Errorf("probing file: %w", err)
 		}
 		for _, icon := range icons {
 			slog.Info("found", "icon", icon)
@@ -89,8 +109,7 @@ func main() {
 	}
 	img, format, err := image.Decode(input)
 	if err != nil {
-		slog.Error("decoding input", "err", err)
-		return
+		return fmt.Errorf("decoding input: %w", err)
 	}
 	if format == "icns" {
 		imageType := strings.ToLower(filepath.Ext(out))
@@ -98,15 +117,15 @@ func main() {
 			imageType = ".png"
 		}
 		if err := encoders[imageType](output, img); err != nil {
-			slog.Error("encoding", "err", err, "type", imageType)
+			return fmt.Errorf("encoding %s: %w", imageType, err)
 		}
-	} else {
-		enc := icns.NewEncoder(output).
-			WithAlgorithm(algorithm)
-		if err := enc.Encode(img); err != nil {
-			slog.Error("encoding icns", "err", err)
-		}
+		return nil
 	}
+	enc := icns.NewEncoder(output).WithAlgorithm(algorithm)
+	if err := enc.Encode(img); err != nil {
+		return fmt.Errorf("encoding icns: %w", err)
+	}
+	return nil
 }
 
 func sanitiseInputs(
