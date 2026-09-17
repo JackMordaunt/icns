@@ -19,18 +19,13 @@ func TestDecode(t *testing.T) {
 	tests := []struct {
 		desc  string
 		input image.Image
-		want  image.Image
+		want  int // Side of the decoded icon.
 	}{
-		{
-			"valid square icon, exact size",
-			rect(0, 0, 256, 256),
-			rect(0, 0, 256, 256),
-		},
-		{
-			"non exact size",
-			rect(0, 0, 50, 50),
-			rect(0, 0, 32, 32),
-		},
+		{"valid square icon, exact size", gradient(256), 256},
+		{"non exact size", gradient(50), 32},
+		// 32px wide but with Max at 72: measuring Max instead of Dx would
+		// pick the 64px tier and upscale.
+		{"not at origin", gradient(128).SubImage(image.Rect(40, 40, 72, 72)), 32},
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(st *testing.T) {
@@ -42,29 +37,51 @@ func TestDecode(t *testing.T) {
 			if err != nil {
 				st.Fatalf("unexpected error: %v", err)
 			}
-			if tt.want != nil && !imageCompare(img, tt.want) {
-				st.Fatalf("decoded image is incorrect")
+			if got := img.Bounds().Size(); got != image.Pt(tt.want, tt.want) {
+				st.Fatalf("decoded icon is %v, want %dx%d", got, tt.want, tt.want)
 			}
 		})
 	}
 }
 
+// TestRoundTrip checks that an image of an exact icon size survives
+// encode(decode(img)) pixel for pixel: no resampling happens for that size
+// and PNG is lossless.
+func TestRoundTrip(t *testing.T) {
+	t.Parallel()
+	src := gradient(128)
+	buf := bytes.NewBuffer(nil)
+	if err := Encode(buf, src); err != nil {
+		t.Fatal(err)
+	}
+	imgs, err := DecodeAll(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 128 (ic07), 64 (ic12) and 32 (ic11); no retina OSType exists for 16px.
+	if len(imgs) != 3 {
+		t.Fatalf("DecodeAll returned %d icons, want 3", len(imgs))
+	}
+	if !imageCompare(imgs[0], src) {
+		t.Fatal("largest decoded icon differs from the source image")
+	}
+}
+
+// imageCompare reports whether two images have identical bounds and pixels.
 func imageCompare(left, right image.Image) bool {
-	if left == nil && right == nil {
-		return true
-	}
-	if left == nil && right != nil {
-		return false
-	}
-	if left != nil && right == nil {
-		return false
+	if left == nil || right == nil {
+		return left == nil && right == nil
 	}
 	lb := left.Bounds()
-	for ii := lb.Min.X; ii <= lb.Max.X; ii++ {
-		for kk := lb.Min.Y; kk <= lb.Max.Y; kk++ {
-			lr, lg, lb, la := left.At(ii, kk).RGBA()
-			rr, rg, rb, ra := right.At(ii, kk).RGBA()
-			if lr != rr || lg != rg || lb != rb || la != ra {
+	if lb.Size() != right.Bounds().Size() {
+		return false
+	}
+	offset := right.Bounds().Min.Sub(lb.Min)
+	for x := lb.Min.X; x < lb.Max.X; x++ {
+		for y := lb.Min.Y; y < lb.Max.Y; y++ {
+			lr, lg, lbl, la := left.At(x, y).RGBA()
+			rr, rg, rb, ra := right.At(x+offset.X, y+offset.Y).RGBA()
+			if lr != rr || lg != rg || lbl != rb || la != ra {
 				return false
 			}
 		}
@@ -137,6 +154,9 @@ func TestEncode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(st *testing.T) {
 			err := Encode(tt.wr, tt.img)
+			if tt.wantErr && err == nil {
+				st.Fatal("expected an error")
+			}
 			if !tt.wantErr && err != nil {
 				st.Fatalf("unexpected error: %v", err)
 			}
