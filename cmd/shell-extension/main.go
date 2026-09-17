@@ -35,14 +35,16 @@ var factory = com.NewClassFactory(provider.Create)
 //
 //export DllGetClassObject
 func DllGetClassObject(rclsid, riid unsafe.Pointer, ppv *unsafe.Pointer) uint32 {
-	if ppv == nil {
-		return uint32(com.E_POINTER)
-	}
-	*ppv = nil
-	if !com.IsEqualGUID((*com.GUID)(rclsid), provider.CLSID) {
-		return uint32(com.CLASS_E_CLASSNOTAVAILABLE)
-	}
-	return uint32(factory.QueryInterface((*com.GUID)(riid), ppv))
+	return uint32(com.Guard("DllGetClassObject", func() com.HRESULT {
+		if ppv == nil {
+			return com.E_POINTER
+		}
+		*ppv = nil
+		if !com.IsEqualGUID((*com.GUID)(rclsid), provider.CLSID) {
+			return com.CLASS_E_CLASSNOTAVAILABLE
+		}
+		return factory.QueryInterface((*com.GUID)(riid), ppv)
+	}))
 }
 
 // DllCanUnloadNow always refuses: a Go runtime cannot be torn down and
@@ -59,22 +61,26 @@ func DllCanUnloadNow() uint32 {
 //
 //export DllRegisterServer
 func DllRegisterServer() uint32 {
-	if err := register(); err != nil {
-		logError("registering", err)
-		return uint32(com.E_FAIL)
-	}
-	return uint32(com.S_OK)
+	return uint32(com.Guard("DllRegisterServer", func() com.HRESULT {
+		if err := register(); err != nil {
+			logError("registering", err)
+			return com.E_FAIL
+		}
+		return com.S_OK
+	}))
 }
 
 // DllUnregisterServer removes the current user's registration.
 //
 //export DllUnregisterServer
 func DllUnregisterServer() uint32 {
-	if err := unregister(); err != nil {
-		logError("unregistering", err)
-		return uint32(com.E_FAIL)
-	}
-	return uint32(com.S_OK)
+	return uint32(com.Guard("DllUnregisterServer", func() com.HRESULT {
+		if err := unregister(); err != nil {
+			logError("unregistering", err)
+			return com.E_FAIL
+		}
+		return com.S_OK
+	}))
 }
 
 // DllInstall supports `regsvr32 /n /i[:cmdline]`. Registration is always

@@ -3,7 +3,9 @@
 package com
 
 import (
+	"log/slog"
 	"runtime"
+	"runtime/debug"
 	"syscall"
 	"unsafe"
 )
@@ -55,12 +57,27 @@ func (f *ClassFactory) CreateInstance(outer unsafe.Pointer, riid *GUID, ppv *uns
 	return f.create(riid, ppv)
 }
 
+// Guard runs a COM method body and converts a panic into E_FAIL.
+//
+// A panic that unwinds out of a syscall.NewCallback trampoline crosses C
+// frames and takes the host process down with it, which in the shell's case
+// means Explorer. COM callers expect failures as HRESULTs, so report it as one.
+func Guard(method string, body func() HRESULT) (hr HRESULT) {
+	defer func() {
+		if p := recover(); p != nil {
+			slog.Error("panic in COM method", "method", method, "panic", p, "stack", string(debug.Stack()))
+			hr = E_FAIL
+		}
+	}()
+	return body()
+}
+
 // classFactoryVtbl is shared by all factories. The trampolines recover the
 // concrete factory from the `this` pointer COM passes back to us.
 var classFactoryVtbl = &IClassFactoryVtbl{
 	IUnknownVtbl: IUnknownVtbl{
 		QueryInterface: syscall.NewCallback(func(this *ClassFactory, riid *GUID, ppv *unsafe.Pointer) uintptr {
-			return this.QueryInterface(riid, ppv)
+			return Guard("IClassFactory::QueryInterface", func() HRESULT { return this.QueryInterface(riid, ppv) })
 		}),
 		AddRef: syscall.NewCallback(func(this *ClassFactory) uintptr {
 			return 1
@@ -70,7 +87,7 @@ var classFactoryVtbl = &IClassFactoryVtbl{
 		}),
 	},
 	CreateInstance: syscall.NewCallback(func(this *ClassFactory, outer unsafe.Pointer, riid *GUID, ppv *unsafe.Pointer) uintptr {
-		return this.CreateInstance(outer, riid, ppv)
+		return Guard("IClassFactory::CreateInstance", func() HRESULT { return this.CreateInstance(outer, riid, ppv) })
 	}),
 	LockServer: syscall.NewCallback(func(this *ClassFactory, lock uintptr) uintptr {
 		// The Go runtime can never be unloaded from a host process (see

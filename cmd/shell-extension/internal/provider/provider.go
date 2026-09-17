@@ -230,39 +230,41 @@ func fromThumb(this unsafe.Pointer) *Provider {
 	return (*Provider)(unsafe.Add(this, -int(unsafe.Offsetof(Provider{}.thumbVtbl))))
 }
 
-// Shared vtables. Every trampoline must return a single uintptr.
+// Shared vtables. Every trampoline must return a single uintptr, and every
+// body runs under com.Guard so a panic (a malformed file, a GDI failure)
+// surfaces as E_FAIL instead of unwinding into the host process.
 var (
 	initVtbl = &initializeWithStreamVtbl{
 		IUnknownVtbl: com.IUnknownVtbl{
 			QueryInterface: syscall.NewCallback(func(this *Provider, riid *com.GUID, ppv *unsafe.Pointer) uintptr {
-				return this.QueryInterface(riid, ppv)
+				return com.Guard("IInitializeWithStream::QueryInterface", func() com.HRESULT { return this.QueryInterface(riid, ppv) })
 			}),
 			AddRef: syscall.NewCallback(func(this *Provider) uintptr {
-				return uintptr(this.AddRef())
+				return com.Guard("IInitializeWithStream::AddRef", func() com.HRESULT { return uintptr(this.AddRef()) })
 			}),
 			Release: syscall.NewCallback(func(this *Provider) uintptr {
-				return uintptr(this.Release())
+				return com.Guard("IInitializeWithStream::Release", func() com.HRESULT { return uintptr(this.Release()) })
 			}),
 		},
 		Initialize: syscall.NewCallback(func(this *Provider, stream *com.IStream, grfMode uint32) uintptr {
-			return this.Initialize(stream, grfMode)
+			return com.Guard("IInitializeWithStream::Initialize", func() com.HRESULT { return this.Initialize(stream, grfMode) })
 		}),
 	}
 
 	thumbVtbl = &thumbnailProviderVtbl{
 		IUnknownVtbl: com.IUnknownVtbl{
 			QueryInterface: syscall.NewCallback(func(this unsafe.Pointer, riid *com.GUID, ppv *unsafe.Pointer) uintptr {
-				return fromThumb(this).QueryInterface(riid, ppv)
+				return com.Guard("IThumbnailProvider::QueryInterface", func() com.HRESULT { return fromThumb(this).QueryInterface(riid, ppv) })
 			}),
 			AddRef: syscall.NewCallback(func(this unsafe.Pointer) uintptr {
-				return uintptr(fromThumb(this).AddRef())
+				return com.Guard("IThumbnailProvider::AddRef", func() com.HRESULT { return uintptr(fromThumb(this).AddRef()) })
 			}),
 			Release: syscall.NewCallback(func(this unsafe.Pointer) uintptr {
-				return uintptr(fromThumb(this).Release())
+				return com.Guard("IThumbnailProvider::Release", func() com.HRESULT { return uintptr(fromThumb(this).Release()) })
 			}),
 		},
 		GetThumbnail: syscall.NewCallback(func(this unsafe.Pointer, cx uint32, phbmp *windows.Handle, pdwAlpha *uint32) uintptr {
-			return fromThumb(this).GetThumbnail(cx, phbmp, pdwAlpha)
+			return com.Guard("IThumbnailProvider::GetThumbnail", func() com.HRESULT { return fromThumb(this).GetThumbnail(cx, phbmp, pdwAlpha) })
 		}),
 	}
 )
