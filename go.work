@@ -6,3 +6,8 @@ use (
 	./cmd/preview
 	./cmd/shell-extension
 )
+
+// The commands require the library at a tagged version so that go install
+// works outside this checkout. Inside it, resolve that version to the working
+// tree, which also lets the tree build before the tag exists.
+replace github.com/jackmordaunt/icns/v4 v4.0.0 => ./

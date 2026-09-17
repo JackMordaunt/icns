@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jackmordaunt/icns/v3"
+	"github.com/jackmordaunt/icns/v4"
 	"github.com/spf13/afero"
 
 	"github.com/spf13/pflag"

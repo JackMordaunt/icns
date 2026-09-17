@@ -5,7 +5,7 @@ go 1.21.5
 require (
 	gioui.org v0.3.1
 	gioui.org/x v0.3.2
-	github.com/jackmordaunt/icns/v3 v3.0.0
+	github.com/jackmordaunt/icns/v4 v4.0.0
 	github.com/ncruces/zenity v0.10.10
 )
 

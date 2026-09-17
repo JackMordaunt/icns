@@ -16,7 +16,7 @@ import (
 
 	"github.com/jackmordaunt/icns/cmd/shell-extension/internal/com"
 	"github.com/jackmordaunt/icns/cmd/shell-extension/internal/provider"
-	"github.com/jackmordaunt/icns/v3"
+	"github.com/jackmordaunt/icns/v4"
 	"golang.org/x/sys/windows"
 )
 

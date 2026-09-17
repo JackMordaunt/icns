@@ -19,7 +19,7 @@ import (
 	"unsafe"
 
 	"github.com/jackmordaunt/icns/cmd/shell-extension/internal/com"
-	"github.com/jackmordaunt/icns/v3"
+	"github.com/jackmordaunt/icns/v4"
 	"github.com/nfnt/resize"
 	"golang.org/x/sys/windows"
 )

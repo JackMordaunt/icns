@@ -1,4 +1,4 @@
-module github.com/jackmordaunt/icns/v3
+module github.com/jackmordaunt/icns/v4
 
 go 1.21.5
 
