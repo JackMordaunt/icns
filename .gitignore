@@ -1,3 +1,6 @@
 *.DS_Store
 *vendor
 *dist
+*.exe
+*.dll
+*.test
