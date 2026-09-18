@@ -178,6 +178,10 @@ func FuzzDecode(f *testing.F) {
 	f.Add(file(encodeElement("is32", rgb)))
 	f.Add(file(encodeElement("it32", []byte{0, 0, 0, 0, 0xFF, 0x01})))
 	f.Add(file(encodeElement("il32", []byte{0xFF}), encodeElement("l8mk", mask)))
+	// ARGB, which runs the same decoder over four planes.
+	argb, _ := argbElement(16)
+	f.Add(file(encodeElement("ic04", argb)))
+	f.Add(file(encodeElement("ic04", []byte("ARGB"))))
 	f.Fuzz(func(t *testing.T, data []byte) {
 		Probe(bytes.NewReader(data))
 		Decode(bytes.NewReader(data))

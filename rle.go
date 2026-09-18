@@ -106,6 +106,27 @@ func splitPlanes(img image.Image, side int) (planes, mask []byte) {
 	return planes, mask
 }
 
+// decodeARGB builds an image from the four run-length encoded planes that
+// follow an ARGB header, alpha first and then the colour channels.
+func decodeARGB(data []byte, side int) (image.Image, error) {
+	pixels := side * side
+	planes, err := unpackRLE(data, pixels*4)
+	if err != nil {
+		return nil, err
+	}
+	// Alpha is a plane of its own rather than folded into the colour, so the
+	// result is non-premultiplied.
+	img := image.NewNRGBA(image.Rect(0, 0, side, side))
+	for i := 0; i < pixels; i++ {
+		px := img.Pix[i*4 : i*4+4 : i*4+4]
+		px[3] = planes[i]
+		px[0] = planes[pixels+i]
+		px[1] = planes[pixels*2+i]
+		px[2] = planes[pixels*3+i]
+	}
+	return img, nil
+}
+
 // decodeRGB builds an image from run-length encoded colour planes and the
 // raw alpha of the matching mask element. A missing mask leaves the icon
 // opaque, which is how the icons that predate masks are meant to render.
