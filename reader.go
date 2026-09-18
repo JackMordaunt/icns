@@ -2,12 +2,12 @@ package icns
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/binary"
 	"fmt"
 	"image"
 	"io"
 	"slices"
-	"sort"
 )
 
 var jpeg2000header = []byte{0x00, 0x00, 0x00, 0x0c, 0x6a, 0x50, 0x20, 0x20}
@@ -26,8 +26,8 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 		return nil, err
 	}
 	// Largest first, keeping file order between icons of equal size.
-	sort.SliceStable(entries, func(ii, jj int) bool {
-		return entries[ii].Size > entries[jj].Size
+	slices.SortStableFunc(entries, func(a, b Entry) int {
+		return cmp.Compare(b.Size, a.Size)
 	})
 	return &Decoder{entries: entries}, nil
 }
@@ -123,12 +123,9 @@ func DecodeAll(r io.Reader) (images []image.Image, err error) {
 	}
 	// An element may hold an image of a size other than the one its type
 	// names, so order by what was actually decoded.
-	sort.SliceStable(images, func(ii, jj int) bool {
-		var (
-			left  = images[ii].Bounds().Size()
-			right = images[jj].Bounds().Size()
-		)
-		return (left.X + left.Y) > (right.X + right.Y)
+	slices.SortStableFunc(images, func(a, b image.Image) int {
+		left, right := a.Bounds().Size(), b.Bounds().Size()
+		return cmp.Compare(right.X+right.Y, left.X+left.Y)
 	})
 	return images, nil
 }

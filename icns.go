@@ -1,11 +1,12 @@
 package icns
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"image"
 	"io"
-	"sort"
+	"slices"
 	"sync"
 
 	"golang.org/x/image/draw"
@@ -93,15 +94,14 @@ func NewIconSetFrom(images map[Slot]image.Image, interp InterpolationFunction) (
 	}
 	// The largest artwork stands in for the slots left empty. Ties are broken
 	// by slot so the choice does not depend on map ordering.
-	sort.Slice(slots, func(ii, jj int) bool {
-		left, right := biggestSide(images[slots[ii]]), biggestSide(images[slots[jj]])
-		if left != right {
-			return left > right
+	slices.SortFunc(slots, func(a, b Slot) int {
+		if order := cmp.Compare(biggestSide(images[b]), biggestSide(images[a])); order != 0 {
+			return order
 		}
-		if slots[ii].Points != slots[jj].Points {
-			return slots[ii].Points > slots[jj].Points
+		if order := cmp.Compare(b.Points, a.Points); order != 0 {
+			return order
 		}
-		return slots[ii].Scale > slots[jj].Scale
+		return cmp.Compare(b.Scale, a.Scale)
 	})
 	return newIconSet(images, images[slots[0]], interp)
 }
