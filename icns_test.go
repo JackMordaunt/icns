@@ -130,7 +130,7 @@ func TestResizeKeepsColorOutOfTransparentPixels(t *testing.T) {
 	}
 	// Bilinear has no negative lobes, so every output pixel is a plain
 	// average of its neighbours and the expected values are exact.
-	got := resizeSquare(src, 32, Bilinear.scaler())
+	got := resizeSquare(src, 32, Bilinear)
 	var blended int
 	for y := got.Bounds().Min.Y; y < got.Bounds().Max.Y; y++ {
 		for x := got.Bounds().Min.X; x < got.Bounds().Max.X; x++ {
