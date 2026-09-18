@@ -10,9 +10,9 @@ import (
 	"testing"
 )
 
-// element builds one icns element: 4-byte type, 4-byte big-endian length of
-// the whole element, then the payload.
-func element(id string, payload []byte) []byte {
+// encodeElement builds one icns element: 4-byte type, 4-byte big-endian
+// length of the whole element, then the payload.
+func encodeElement(id string, payload []byte) []byte {
 	out := make([]byte, 0, elementHeaderSize+len(payload))
 	out = append(out, id...)
 	out = binary.BigEndian.AppendUint32(out, uint32(elementHeaderSize+len(payload)))
@@ -21,7 +21,7 @@ func element(id string, payload []byte) []byte {
 
 // file wraps elements in an icns header with a correct length.
 func file(elements ...[]byte) []byte {
-	return element("icns", bytes.Join(elements, nil))
+	return encodeElement("icns", bytes.Join(elements, nil))
 }
 
 func pngBytes(t testing.TB, side int) []byte {
@@ -42,16 +42,16 @@ func TestDecodeMalformed(t *testing.T) {
 	}{
 		{"empty", nil, ErrInvalidHeader},
 		{"short", []byte("ic"), ErrInvalidHeader},
-		{"wrong magic", element("ICNS", nil), ErrInvalidHeader},
+		{"wrong magic", encodeElement("ICNS", nil), ErrInvalidHeader},
 		{"header only", file(), ErrNoIcons},
 		{"declared size exceeds data", append([]byte("icns"), 0xff, 0xff, 0xff, 0xff), ErrMalformed},
 		{"truncated element header", append([]byte("icns\x00\x00\x00\x0c"), 'i', 'c', '0', '7'), ErrMalformed},
 		{"element size below header", file(append([]byte("ic07"), 0, 0, 0, 4)), ErrMalformed},
 		{"element overruns file", file(append([]byte("ic07"), 0, 0, 1, 0)), ErrMalformed},
 		{"zero-length TOC loops forever without a check", file(append([]byte("TOC "), 0, 0, 0, 0)), ErrMalformed},
-		{"unknown elements only", file(element("TOC ", []byte{1, 2, 3, 4}), element("icnV", []byte{0, 0, 0, 0})), ErrNoIcons},
-		{"empty icon payload", file(element("ic07", nil)), ErrNoIcons},
-		{"only jpeg2000", file(element("ic07", jpeg2000header)), ErrUnsupportedFormat},
+		{"unknown elements only", file(encodeElement("TOC ", []byte{1, 2, 3, 4}), encodeElement("icnV", []byte{0, 0, 0, 0})), ErrNoIcons},
+		{"empty icon payload", file(encodeElement("ic07", nil)), ErrNoIcons},
+		{"only jpeg2000", file(encodeElement("ic07", jpeg2000header)), ErrUnsupportedFormat},
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(st *testing.T) {
@@ -69,11 +69,11 @@ func TestDecodeMalformed(t *testing.T) {
 func TestDecodeSkipsNonIconElements(t *testing.T) {
 	t.Parallel()
 	data := file(
-		element("TOC ", []byte("ic07\x00\x00\x00\x10")),
-		element("icnV", []byte{0x40, 0x00, 0x00, 0x00}),
-		element("name", []byte("icon")),
-		element("ic07", pngBytes(t, 128)),
-		element("ic11", pngBytes(t, 32)),
+		encodeElement("TOC ", []byte("ic07\x00\x00\x00\x10")),
+		encodeElement("icnV", []byte{0x40, 0x00, 0x00, 0x00}),
+		encodeElement("name", []byte("icon")),
+		encodeElement("ic07", pngBytes(t, 128)),
+		encodeElement("ic11", pngBytes(t, 32)),
 	)
 	desc, err := Probe(bytes.NewReader(data))
 	if err != nil {
@@ -95,8 +95,8 @@ func TestDecodeSkipsNonIconElements(t *testing.T) {
 func TestDecodeFallsBackPastJPEG2000(t *testing.T) {
 	t.Parallel()
 	data := file(
-		element("ic10", jpeg2000header), // Largest, but undecodable.
-		element("ic07", pngBytes(t, 128)),
+		encodeElement("ic10", jpeg2000header), // Largest, but undecodable.
+		encodeElement("ic07", pngBytes(t, 128)),
 	)
 	img, err := Decode(bytes.NewReader(data))
 	if err != nil {
@@ -123,6 +123,12 @@ func FuzzDecode(f *testing.F) {
 	f.Add(file(append([]byte("TOC "), 0, 0, 0, 0)))
 	f.Add(file(append([]byte("ic07"), 0, 0, 0, 4)))
 	f.Add(append([]byte("icns"), 0xff, 0xff, 0xff, 0xff))
+	// Legacy colour and mask elements, which run the RLE decoder.
+	rgb, mask, _ := legacyIcon(16)
+	f.Add(file(encodeElement("is32", rgb), encodeElement("s8mk", mask)))
+	f.Add(file(encodeElement("is32", rgb)))
+	f.Add(file(encodeElement("it32", []byte{0, 0, 0, 0, 0xFF, 0x01})))
+	f.Add(file(encodeElement("il32", []byte{0xFF}), encodeElement("l8mk", mask)))
 	f.Fuzz(func(t *testing.T, data []byte) {
 		Probe(bytes.NewReader(data))
 		Decode(bytes.NewReader(data))
