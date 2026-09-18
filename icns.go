@@ -65,7 +65,6 @@ func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error)
 		return nil, ErrImageTooSmall{image: img, need: 16}
 	}
 	icons := make([]*Icon, len(osTypes))
-	scaler := interp.scaler()
 	work := sync.WaitGroup{}
 	var iconIdx int
 	for _, size := range sizesFrom(biggest) {
@@ -79,7 +78,7 @@ func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error)
 			go func(iconIdx int, osType OsType, size uint) {
 				icons[iconIdx] = &Icon{
 					Type:  osType,
-					Image: resizeSquare(img, size, scaler),
+					Image: resizeSquare(img, size, interp),
 				}
 				work.Done()
 			}(iconIdx, osType, size)
@@ -98,13 +97,13 @@ func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error)
 //
 // Scaling happens in alpha-premultiplied space, so colour does not bleed out
 // of fully transparent pixels into the icon's edges.
-func resizeSquare(img image.Image, size uint, scaler draw.Interpolator) image.Image {
+func resizeSquare(img image.Image, size uint, interp InterpolationFunction) image.Image {
 	bounds := img.Bounds()
 	if bounds.Dx() == int(size) && bounds.Dy() == int(size) {
 		return img
 	}
 	dst := image.NewRGBA(image.Rect(0, 0, int(size), int(size)))
-	scaler.Scale(dst, dst.Bounds(), img, bounds, draw.Src, nil)
+	interp.scaler().Scale(dst, dst.Bounds(), img, bounds, draw.Src, nil)
 	return dst
 }
 
