@@ -1,6 +1,6 @@
 module github.com/jackmordaunt/icns/cmd/preview
 
-go 1.21.5
+go 1.23.0
 
 require (
 	gioui.org v0.3.1
