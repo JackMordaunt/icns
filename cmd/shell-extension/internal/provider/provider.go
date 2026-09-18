@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"fmt"
 	"image"
-	"image/draw"
 	"io"
 	"log/slog"
 	"runtime"
@@ -20,7 +19,7 @@ import (
 
 	"github.com/jackmordaunt/icns/cmd/shell-extension/internal/com"
 	"github.com/jackmordaunt/icns/v4"
-	"github.com/nfnt/resize"
+	"golang.org/x/image/draw"
 	"golang.org/x/sys/windows"
 )
 
@@ -210,13 +209,27 @@ func Thumbnail(r io.Reader, cx int) (*image.RGBA, error) {
 		}
 		chosen = img
 	}
+	// Normalise to premultiplied RGBA, which is what a GDI ARGB bitmap
+	// wants, shrinking the icon to fit the cx square on the way if needed.
+	var (
+		b    = chosen.Bounds()
+		w, h = b.Dx(), b.Dy()
+	)
 	if side(chosen) > cx {
-		chosen = resize.Thumbnail(uint(cx), uint(cx), chosen, resize.Lanczos3)
+		if w >= h {
+			w, h = cx, max(h*cx/w, 1)
+		} else {
+			w, h = max(w*cx/h, 1), cx
+		}
 	}
-	// Normalise to premultiplied RGBA, which is what a GDI ARGB bitmap wants.
-	b := chosen.Bounds()
-	rgba := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
-	draw.Draw(rgba, rgba.Bounds(), chosen, b.Min, draw.Src)
+	rgba := image.NewRGBA(image.Rect(0, 0, w, h))
+	if w == b.Dx() && h == b.Dy() {
+		draw.Draw(rgba, rgba.Bounds(), chosen, b.Min, draw.Src)
+	} else {
+		// CatmullRom is x/image's high quality kernel, and rings less on the
+		// hard edges typical of icons than a wider Lanczos window.
+		draw.CatmullRom.Scale(rgba, rgba.Bounds(), chosen, b, draw.Src, nil)
+	}
 	return rgba, nil
 }
 
