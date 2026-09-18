@@ -107,6 +107,30 @@ func TestUnpackRLE(t *testing.T) {
 	}
 }
 
+func TestPadRLE(t *testing.T) {
+	t.Parallel()
+	// Compressed data gets a byte so a reader that drops the last value of
+	// the stream loses the padding instead of a pixel.
+	if got := padRLE([]byte{0x80, 0x07}, 3); !bytes.Equal(got, []byte{0x80, 0x07, 0x00}) {
+		t.Errorf("compressed data = %v, want a trailing zero", got)
+	}
+	// Uncompressed data has to keep its exact length, which is how a reader
+	// tells that it was never compressed.
+	raw := []byte{1, 2, 3}
+	if got := padRLE(raw, len(raw)); !bytes.Equal(got, raw) {
+		t.Errorf("uncompressed data = %v, want it unchanged", got)
+	}
+	// Whatever the padding, the data still reads back.
+	planes := bytes.Repeat([]byte{0x40}, 768)
+	out, err := unpackRLE(padRLE(packRLE(planes), len(planes)), len(planes))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(out, planes) {
+		t.Fatal("padded data did not survive the round trip")
+	}
+}
+
 // legacyIcon builds an is32 colour element and its s8mk mask for a gradient,
 // returning the elements and the image they describe.
 func legacyIcon(side int) (rgb, mask []byte, want *image.NRGBA) {

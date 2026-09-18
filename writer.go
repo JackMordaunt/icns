@@ -40,7 +40,7 @@ func (i *Icon) encode() error {
 	if i.Type.enc == encodingRGB {
 		planes, mask := splitPlanes(i.Image, int(i.Type.Size))
 		i.elements = []element{
-			{id: i.Type.ID, payload: packRLE(planes)},
+			{id: i.Type.ID, payload: padRLE(packRLE(planes), len(planes))},
 			{id: i.Type.mask, payload: mask},
 		}
 		return nil

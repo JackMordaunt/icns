@@ -85,6 +85,18 @@ const (
 	maxRepeat = 130
 )
 
+// padRLE appends a byte to compressed data, which a decoder that drops the
+// last value of a stream then loses instead of a pixel. Apple's own reader
+// does exactly that on Apple silicon, turning the tail of the blue plane
+// black. Data that was stored uncompressed is left at its exact length,
+// which is how a reader tells the two apart.
+func padRLE(data []byte, uncompressed int) []byte {
+	if len(data) == uncompressed {
+		return data
+	}
+	return append(data, 0)
+}
+
 // splitPlanes separates an image into the three colour planes and the alpha
 // mask that the legacy elements store separately. The planes hold straight
 // colour, so alpha is divided back out.

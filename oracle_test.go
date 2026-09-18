@@ -107,26 +107,34 @@ func TestIconutilWrites(t *testing.T) {
 		t.Fatalf("decoding what iconutil wrote: %v", err)
 	}
 	icons := d.Icons()
-	t.Logf("iconutil wrote %d icons this package reads", len(icons))
 	if len(icons) == 0 {
 		t.Fatal("no icons were read back")
 	}
+	// Each slot was painted its own colour, so the colour that comes out
+	// names the file that went in. That reports the mapping for the types
+	// iconutil writes and this package does not, rather than guessing it.
+	source := map[color.NRGBA]Slot{}
+	for slot, c := range want {
+		source[c] = slot
+	}
 	for _, icon := range icons {
-		slot, ok := slotOf[icon.ID]
-		if !ok {
-			t.Errorf("iconutil wrote %s, which this package does not place in a slot", icon.ID)
-			continue
-		}
 		img, err := icon.Decode()
 		if err != nil {
 			t.Errorf("%s: %v", icon.ID, err)
 			continue
 		}
-		if got := uint(img.Bounds().Dx()); got != slot.Pixels() {
-			t.Errorf("%s is %d pixels, want %d", icon.ID, got, slot.Pixels())
+		got := centre(img)
+		slot, ok := source[got]
+		if !ok {
+			t.Errorf("%s holds %v, which is no slot's artwork", icon.ID, got)
+			continue
 		}
-		if got := centre(img); got != want[slot] {
-			t.Errorf("%s holds %v, want %v from slot %s", icon.ID, got, want[slot], slot)
+		t.Logf("iconutil wrote %-4s %4dpx from slot %s", icon.ID, img.Bounds().Dx(), slot)
+		if px := uint(img.Bounds().Dx()); px != slot.Pixels() {
+			t.Errorf("%s is %d pixels, but slot %s is %d", icon.ID, px, slot, slot.Pixels())
+		}
+		if ours, ok := slotOf[icon.ID]; ok && ours != slot {
+			t.Errorf("%s carries slot %s, but this package fills it from %s", icon.ID, slot, ours)
 		}
 	}
 }
