@@ -76,10 +76,9 @@ func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error)
 		for _, osType := range osTypes {
 			work.Add(1)
 			go func(iconIdx int, osType OsType, size uint) {
-				iconImg := resize.Resize(size, size, img, interp)
 				icons[iconIdx] = &Icon{
 					Type:  osType,
-					Image: iconImg,
+					Image: resizeSquare(img, size, interp),
 				}
 				work.Done()
 			}(iconIdx, osType, size)
@@ -91,6 +90,18 @@ func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error)
 		Icons: icons,
 	}
 	return iconSet, nil
+}
+
+// resizeSquare scales img into a size by size square, ignoring the source
+// aspect ratio. An image already at that size is passed through untouched,
+// which keeps the largest icon identical to the source and skips the most
+// expensive resample in the common case.
+func resizeSquare(img image.Image, size uint, interp InterpolationFunction) image.Image {
+	bounds := img.Bounds()
+	if bounds.Dx() == int(size) && bounds.Dy() == int(size) {
+		return img
+	}
+	return resize.Resize(size, size, img, interp)
 }
 
 // Big-endian.
