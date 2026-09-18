@@ -216,6 +216,10 @@ const (
 	// ImageFormatARGB is run-length encoded channel planes that carry their
 	// own alpha, behind an "ARGB" header.
 	ImageFormatARGB
+	// ImageFormatBitmap is one bit per pixel with a one bit mask.
+	ImageFormatBitmap
+	// ImageFormatIndexed is an index per pixel into a fixed colour table.
+	ImageFormatIndexed
 )
 
 func (f ImageFormat) String() string {
@@ -228,6 +232,10 @@ func (f ImageFormat) String() string {
 		return "24-bit RGB"
 	case ImageFormatARGB:
 		return "ARGB"
+	case ImageFormatBitmap:
+		return "1-bit"
+	case ImageFormatIndexed:
+		return "indexed colour"
 	}
 	return fmt.Sprintf("unknown format %d", f)
 }
@@ -241,6 +249,12 @@ const (
 	// encodingRGB holds run-length encoded colour planes, with alpha in the
 	// separate element named by OsType.mask.
 	encodingRGB
+	// encodingBitmap holds one bit per pixel followed by its own mask.
+	encodingBitmap
+	// encodingIndexed4 and encodingIndexed8 hold an index per pixel into a
+	// fixed colour table, with alpha in the mask half of OsType.mask.
+	encodingIndexed4
+	encodingIndexed8
 )
 
 // OsType is a 4 character identifier used to differentiate icon types.
@@ -250,8 +264,11 @@ type OsType struct {
 
 	// enc is how this element stores its image data.
 	enc encoding
-	// mask is the element holding this type's alpha, for encodingRGB.
+	// mask is the element holding this type's alpha, for the encodings that
+	// keep it apart from the colour.
 	mask string
+	// height is the pixel height, when the icon is not square.
+	height uint
 	// slot is the iconset slot this type fills, for the written types.
 	slot Slot
 	// emit marks the types the encoder writes. More types can be read than
@@ -290,6 +307,22 @@ var osTypes = []OsType{
 	// render from an app bundle.
 	{ID: "it32", Size: 128, enc: encodingRGB, mask: "t8mk"},
 	{ID: "ih32", Size: 48, enc: encodingRGB, mask: "h8mk"},
+
+	// Icons from System 7 through Mac OS 8, an index per pixel against a
+	// fixed table, with alpha in the mask half of the "#" element.
+	{ID: "ich8", Size: 48, enc: encodingIndexed8, mask: "ich#"},
+	{ID: "ich4", Size: 48, enc: encodingIndexed4, mask: "ich#"},
+	{ID: "ich#", Size: 48, enc: encodingBitmap},
+	{ID: "icl8", Size: 32, enc: encodingIndexed8, mask: "ICN#"},
+	{ID: "icl4", Size: 32, enc: encodingIndexed4, mask: "ICN#"},
+	{ID: "ICN#", Size: 32, enc: encodingBitmap},
+	{ID: "ICON", Size: 32, enc: encodingBitmap},
+	{ID: "ics8", Size: 16, enc: encodingIndexed8, mask: "ics#"},
+	{ID: "ics4", Size: 16, enc: encodingIndexed4, mask: "ics#"},
+	{ID: "ics#", Size: 16, enc: encodingBitmap},
+	{ID: "icm8", Size: 16, height: 12, enc: encodingIndexed8, mask: "icm#"},
+	{ID: "icm4", Size: 16, height: 12, enc: encodingIndexed4, mask: "icm#"},
+	{ID: "icm#", Size: 16, height: 12, enc: encodingBitmap},
 	{ID: "il32", Size: 32, enc: encodingRGB, mask: "l8mk", slot: Slot{32, 1}, emit: true},
 	{ID: "is32", Size: 16, enc: encodingRGB, mask: "s8mk", slot: Slot{16, 1}, emit: true},
 }

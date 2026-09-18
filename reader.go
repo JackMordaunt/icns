@@ -28,9 +28,13 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Largest first, keeping file order between icons of equal size.
+	// Largest first, and at a given size the one carrying the most colour,
+	// since the older files hold several depths of the same icon.
 	slices.SortStableFunc(entries, func(a, b Entry) int {
-		return cmp.Compare(b.Size, a.Size)
+		if order := cmp.Compare(b.Size, a.Size); order != 0 {
+			return order
+		}
+		return cmp.Compare(b.colours(), a.colours())
 	})
 	return &Decoder{entries: entries}, nil
 }
@@ -73,12 +77,67 @@ func (e Entry) Decode() (image.Image, error) {
 			return nil, fmt.Errorf("decoding icon %s %s: %w", e.OsType, e.ImageFormat, err)
 		}
 		return img, nil
+	case ImageFormatBitmap, ImageFormatIndexed:
+		img, err := e.indexed()
+		if err != nil {
+			return nil, fmt.Errorf("decoding icon %s %s: %w", e.OsType, e.ImageFormat, err)
+		}
+		return img, nil
 	default:
 		img, _, err := image.Decode(bytes.NewReader(e.data))
 		if err != nil {
 			return nil, fmt.Errorf("decoding icon %s %s: %w", e.OsType, e.ImageFormat, err)
 		}
 		return img, nil
+	}
+}
+
+// indexed decodes the icon types that hold an index per pixel, finding their
+// alpha in the mask half of a companion element or of their own payload.
+func (e Entry) indexed() (image.Image, error) {
+	var (
+		width  = int(e.Size)
+		height = int(e.Size)
+		bits   = 1
+	)
+	if e.height > 0 {
+		height = int(e.height)
+	}
+	switch e.enc {
+	case encodingIndexed4:
+		bits = 4
+	case encodingIndexed8:
+		bits = 8
+	}
+	// A "#" element holds its bitmap first and its mask second, whether it
+	// is the icon itself or the companion an indexed icon points at.
+	var (
+		plane = width * height / 8
+		mask  = e.mask
+	)
+	if e.enc == encodingBitmap {
+		mask = e.data
+	}
+	if len(mask) >= plane*2 {
+		mask = mask[plane : plane*2]
+	} else {
+		mask = nil
+	}
+	return decodeIndexed(e.data, mask, width, height, bits)
+}
+
+// colours ranks how much colour an icon carries, so the richest at a size
+// comes first.
+func (e Entry) colours() int {
+	switch e.enc {
+	case encodingBitmap:
+		return 0
+	case encodingIndexed4:
+		return 1
+	case encodingIndexed8:
+		return 2
+	default:
+		return 3
 	}
 }
 
@@ -196,6 +255,11 @@ func decode(r io.Reader) (icons []Entry, err error) {
 		switch {
 		case osType.enc == encodingRGB:
 			icon.ImageFormat = ImageFormatRGB
+			icon.mask = payloads[osType.mask]
+		case osType.enc == encodingBitmap:
+			icon.ImageFormat = ImageFormatBitmap
+		case osType.enc == encodingIndexed4, osType.enc == encodingIndexed8:
+			icon.ImageFormat = ImageFormatIndexed
 			icon.mask = payloads[osType.mask]
 		case bytes.HasPrefix(el.payload, argbHeader):
 			icon.ImageFormat = ImageFormatARGB
