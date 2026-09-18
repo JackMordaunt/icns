@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"io"
+	"sort"
 	"sync"
 
 	"golang.org/x/image/draw"
@@ -35,17 +36,26 @@ func (enc *Encoder) Encode(img image.Image) error {
 	if enc.Wr == nil {
 		return errors.New("cannot write to nil writer")
 	}
-	if img == nil {
-		return errors.New("cannot encode nil image")
-	}
 	iconset, err := NewIconSet(img, enc.Algorithm)
 	if err != nil {
 		return err
 	}
-	if _, err := iconset.WriteTo(enc.Wr); err != nil {
+	_, err = iconset.WriteTo(enc.Wr)
+	return err
+}
+
+// EncodeSlots icns from artwork supplied per slot, so hand tuned art is used
+// where it is given rather than resized from a single source.
+func (enc *Encoder) EncodeSlots(images map[Slot]image.Image) error {
+	if enc.Wr == nil {
+		return errors.New("cannot write to nil writer")
+	}
+	iconset, err := NewIconSetFrom(images, enc.Algorithm)
+	if err != nil {
 		return err
 	}
-	return nil
+	_, err = iconset.WriteTo(enc.Wr)
+	return err
 }
 
 // Encode writes img to wr in ICNS format.
@@ -60,9 +70,46 @@ func Encode(wr io.Writer, img image.Image) error {
 // If width != height, the image will be resized using the largest side without
 // preserving the aspect ratio.
 func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error) {
-	biggest := findNearestSize(img)
+	if img == nil {
+		return nil, errors.New("cannot encode nil image")
+	}
+	return newIconSet(nil, img, interp)
+}
+
+// NewIconSetFrom uses artwork supplied per slot to create an IconSet, which is
+// what an iconset directory holds. A slot given artwork of the wrong size has
+// it resized; a slot given none is filled from the largest image supplied,
+// which also sets the largest icon written.
+func NewIconSetFrom(images map[Slot]image.Image, interp InterpolationFunction) (*IconSet, error) {
+	if len(images) == 0 {
+		return nil, errors.New("cannot encode without an image")
+	}
+	slots := make([]Slot, 0, len(images))
+	for slot, img := range images {
+		if img == nil {
+			return nil, fmt.Errorf("cannot encode nil image for %s", slot)
+		}
+		slots = append(slots, slot)
+	}
+	// The largest artwork stands in for the slots left empty. Ties are broken
+	// by slot so the choice does not depend on map ordering.
+	sort.Slice(slots, func(ii, jj int) bool {
+		left, right := biggestSide(images[slots[ii]]), biggestSide(images[slots[jj]])
+		if left != right {
+			return left > right
+		}
+		if slots[ii].Points != slots[jj].Points {
+			return slots[ii].Points > slots[jj].Points
+		}
+		return slots[ii].Scale > slots[jj].Scale
+	})
+	return newIconSet(images, images[slots[0]], interp)
+}
+
+func newIconSet(images map[Slot]image.Image, source image.Image, interp InterpolationFunction) (*IconSet, error) {
+	biggest := findNearestSize(source)
 	if biggest == 0 {
-		return nil, ErrImageTooSmall{image: img, need: 16}
+		return nil, ErrImageTooSmall{image: source, need: 16}
 	}
 	var plan []OsType
 	for _, size := range sizesFrom(biggest) {
@@ -78,9 +125,13 @@ func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error)
 		work.Add(1)
 		go func() {
 			defer work.Done()
+			art := source
+			if supplied, ok := images[osType.slot]; ok {
+				art = supplied
+			}
 			icons[i] = &Icon{
 				Type:  osType,
-				Image: resizeSquare(img, osType.Size, interp),
+				Image: resizeSquare(art, osType.Size, interp),
 			}
 		}()
 	}
@@ -196,6 +247,8 @@ type OsType struct {
 	enc encoding
 	// mask is the element holding this type's alpha, for encodingRGB.
 	mask string
+	// slot is the iconset slot this type fills, for the written types.
+	slot Slot
 	// emit marks the types the encoder writes. More types can be read than
 	// are written.
 	emit bool
@@ -206,14 +259,14 @@ func (t OsType) String() string {
 }
 
 var osTypes = []OsType{
-	{ID: "ic10", Size: 1024, emit: true},
-	{ID: "ic14", Size: 512, emit: true},
-	{ID: "ic09", Size: 512, emit: true},
-	{ID: "ic13", Size: 256, emit: true},
-	{ID: "ic08", Size: 256, emit: true},
-	{ID: "ic07", Size: 128, emit: true},
-	{ID: "ic12", Size: 64, emit: true},
-	{ID: "ic11", Size: 32, emit: true},
+	{ID: "ic10", Size: 1024, slot: Slot{512, 2}, emit: true},
+	{ID: "ic14", Size: 512, slot: Slot{256, 2}, emit: true},
+	{ID: "ic09", Size: 512, slot: Slot{512, 1}, emit: true},
+	{ID: "ic13", Size: 256, slot: Slot{128, 2}, emit: true},
+	{ID: "ic08", Size: 256, slot: Slot{256, 1}, emit: true},
+	{ID: "ic07", Size: 128, slot: Slot{128, 1}, emit: true},
+	{ID: "ic12", Size: 64, slot: Slot{32, 2}, emit: true},
+	{ID: "ic11", Size: 32, slot: Slot{16, 2}, emit: true},
 
 	{ID: "icp6", Size: 48},
 	{ID: "icp5", Size: 32},
@@ -224,8 +277,8 @@ var osTypes = []OsType{
 	// render from an app bundle.
 	{ID: "it32", Size: 128, enc: encodingRGB, mask: "t8mk"},
 	{ID: "ih32", Size: 48, enc: encodingRGB, mask: "h8mk"},
-	{ID: "il32", Size: 32, enc: encodingRGB, mask: "l8mk", emit: true},
-	{ID: "is32", Size: 16, enc: encodingRGB, mask: "s8mk", emit: true},
+	{ID: "il32", Size: 32, enc: encodingRGB, mask: "l8mk", slot: Slot{32, 1}, emit: true},
+	{ID: "is32", Size: 16, enc: encodingRGB, mask: "s8mk", slot: Slot{16, 1}, emit: true},
 }
 
 // getTypesFromSize returns the writable types for the given icon size (in px).
