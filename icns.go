@@ -159,6 +159,9 @@ type ImageFormat int
 const (
 	ImageFormatPNG ImageFormat = iota
 	ImageFormatJPEG2000
+	// ImageFormatRGB is 24-bit colour in run-length encoded channel planes,
+	// with alpha held in a separate mask element.
+	ImageFormatRGB
 )
 
 func (f ImageFormat) String() string {
@@ -167,14 +170,35 @@ func (f ImageFormat) String() string {
 		return "PNG"
 	case ImageFormatJPEG2000:
 		return "JPEG 2000"
+	case ImageFormatRGB:
+		return "24-bit RGB"
 	}
 	return fmt.Sprintf("unknown format %d", f)
 }
+
+// encoding is how an element stores its image data.
+type encoding int
+
+const (
+	// encodingCompressed holds a whole image file, PNG or JPEG 2000.
+	encodingCompressed encoding = iota
+	// encodingRGB holds run-length encoded colour planes, with alpha in the
+	// separate element named by OsType.mask.
+	encodingRGB
+)
 
 // OsType is a 4 character identifier used to differentiate icon types.
 type OsType struct {
 	ID   string
 	Size uint
+
+	// enc is how this element stores its image data.
+	enc encoding
+	// mask is the element holding this type's alpha, for encodingRGB.
+	mask string
+	// emit marks the types the encoder writes. More types can be read than
+	// are written.
+	emit bool
 }
 
 func (t OsType) String() string {
@@ -182,22 +206,31 @@ func (t OsType) String() string {
 }
 
 var osTypes = []OsType{
-	{ID: "ic10", Size: uint(1024)},
-	{ID: "ic14", Size: uint(512)},
-	{ID: "ic09", Size: uint(512)},
-	{ID: "ic13", Size: uint(256)},
-	{ID: "ic08", Size: uint(256)},
-	{ID: "ic07", Size: uint(128)},
-	{ID: "ic12", Size: uint(64)},
-	{ID: "ic11", Size: uint(32)},
+	{ID: "ic10", Size: 1024, emit: true},
+	{ID: "ic14", Size: 512, emit: true},
+	{ID: "ic09", Size: 512, emit: true},
+	{ID: "ic13", Size: 256, emit: true},
+	{ID: "ic08", Size: 256, emit: true},
+	{ID: "ic07", Size: 128, emit: true},
+	{ID: "ic12", Size: 64, emit: true},
+	{ID: "ic11", Size: 32, emit: true},
+
+	{ID: "icp6", Size: 48},
+	{ID: "icp5", Size: 32},
+	{ID: "icp4", Size: 16},
+
+	{ID: "it32", Size: 128, enc: encodingRGB, mask: "t8mk"},
+	{ID: "ih32", Size: 48, enc: encodingRGB, mask: "h8mk"},
+	{ID: "il32", Size: 32, enc: encodingRGB, mask: "l8mk"},
+	{ID: "is32", Size: 16, enc: encodingRGB, mask: "s8mk"},
 }
 
-// getTypesFromSize returns the types for the given icon size (in px).
+// getTypesFromSize returns the writable types for the given icon size (in px).
 // The boolean indicates whether the types exist.
 func getTypesFromSize(size uint) ([]OsType, bool) {
 	var retOsTypes []OsType
 	for _, t := range osTypes {
-		if t.Size == size {
+		if t.Size == size && t.emit {
 			retOsTypes = append(retOsTypes, t)
 		}
 	}
