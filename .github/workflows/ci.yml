@@ -58,7 +58,7 @@ jobs:
       - run: go test -run='^$' -fuzz=FuzzDecode -fuzztime=120s .
       - name: Keep any crasher for download
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fuzz-corpus
           path: testdata/fuzz
