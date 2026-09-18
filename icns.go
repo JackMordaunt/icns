@@ -107,15 +107,6 @@ func resizeSquare(img image.Image, size uint, interp InterpolationFunction) imag
 	return dst
 }
 
-// Big-endian.
-// https://golang.org/src/image/png/writer.go
-func writeUint32(b []uint8, u uint32) {
-	b[0] = uint8(u >> 24)
-	b[1] = uint8(u >> 16)
-	b[2] = uint8(u >> 8)
-	b[3] = uint8(u >> 0)
-}
-
 var sizes = []uint{
 	1024,
 	512,

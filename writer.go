@@ -2,6 +2,7 @@ package icns
 
 import (
 	"bytes"
+	"encoding/binary"
 	"image"
 	"image/png"
 	"io"
@@ -59,12 +60,8 @@ func encodeImage(img image.Image) ([]byte, error) {
 func (i *Icon) writeHeader(wr io.Writer) (int64, error) {
 	if !i.headerSet {
 		defer func() { i.headerSet = true }()
-		i.header[0] = i.Type.ID[0]
-		i.header[1] = i.Type.ID[1]
-		i.header[2] = i.Type.ID[2]
-		i.header[3] = i.Type.ID[3]
-		length := uint32(len(i.data) + 8)
-		writeUint32(i.header[4:8], length)
+		copy(i.header[:4], i.Type.ID)
+		binary.BigEndian.PutUint32(i.header[4:8], uint32(len(i.data)+elementHeaderSize))
 	}
 	written, err := wr.Write(i.header[:8])
 	return int64(written), err
@@ -123,12 +120,8 @@ func (s *IconSet) encodeIcons() error {
 func (s *IconSet) writeHeader(wr io.Writer) (int64, error) {
 	if !s.headerSet {
 		defer func() { s.headerSet = true }()
-		s.header[0] = 'i'
-		s.header[1] = 'c'
-		s.header[2] = 'n'
-		s.header[3] = 's'
-		length := uint32(len(s.data) + 8)
-		writeUint32(s.header[4:8], length)
+		copy(s.header[:4], "icns")
+		binary.BigEndian.PutUint32(s.header[4:8], uint32(len(s.data)+elementHeaderSize))
 	}
 	written, err := wr.Write(s.header[:8])
 	return int64(written), err
