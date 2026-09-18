@@ -32,7 +32,17 @@ jobs:
             cmd/preview/go.sum
             cmd/shell-extension/go.sum
       - run: go build ./...
-      - run: go test -count=1 ./...
+      - name: go test
+        # Windows runners default to PowerShell, and this is a shell script.
+        shell: bash
+        run: |
+          status=0
+          go test -count=1 ./... 2>&1 | tee go-test.log || status=$?
+          if [ "$status" -ne 0 ]; then
+            grep -E '\.go:[0-9]+|FAIL' go-test.log | head -40 |
+              while IFS= read -r line; do echo "::error::$line"; done || true
+          fi
+          exit "$status"
 
   race:
     name: library under the race detector
