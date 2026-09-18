@@ -64,27 +64,25 @@ func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error)
 	if biggest == 0 {
 		return nil, ErrImageTooSmall{image: img, need: 16}
 	}
-	icons := make([]*Icon, len(osTypes))
-	work := sync.WaitGroup{}
-	var iconIdx int
+	var plan []OsType
 	for _, size := range sizesFrom(biggest) {
 		types, ok := getTypesFromSize(size)
 		if !ok {
 			continue
 		}
-		for _, osType := range types {
-			work.Add(1)
-			// iconIdx counts across both loops, so it is passed rather than
-			// captured; size and osType belong to their iteration.
-			go func(idx int) {
-				defer work.Done()
-				icons[idx] = &Icon{
-					Type:  osType,
-					Image: resizeSquare(img, size, interp),
-				}
-			}(iconIdx)
-			iconIdx++
-		}
+		plan = append(plan, types...)
+	}
+	icons := make([]*Icon, len(plan))
+	work := sync.WaitGroup{}
+	for i, osType := range plan {
+		work.Add(1)
+		go func() {
+			defer work.Done()
+			icons[i] = &Icon{
+				Type:  osType,
+				Image: resizeSquare(img, osType.Size, interp),
+			}
+		}()
 	}
 	work.Wait()
 	iconSet := &IconSet{
