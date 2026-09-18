@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"reflect"
 	"testing"
 )
 
@@ -108,6 +109,54 @@ func TestDecodeFallsBackPastJPEG2000(t *testing.T) {
 	all, err := DecodeAll(bytes.NewReader(data))
 	if err != nil || len(all) != 1 {
 		t.Fatalf("DecodeAll = %d images, %v; want 1, nil", len(all), err)
+	}
+}
+
+func TestDecoder(t *testing.T) {
+	t.Parallel()
+	png128 := pngBytes(t, 128)
+	data := file(
+		encodeElement("ic11", pngBytes(t, 32)),
+		encodeElement("ic10", jpeg2000header),
+		encodeElement("ic07", png128),
+	)
+	d, err := NewDecoder(bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	icons := d.Icons()
+	var got []string
+	for _, icon := range icons {
+		got = append(got, icon.ID)
+	}
+	if want := []string{"ic10", "ic07", "ic11"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("icons = %v, want %v largest first", got, want)
+	}
+
+	// An icon this package cannot decode still hands over its bytes, so a
+	// caller can bring its own decoder.
+	if _, err := icons[0].Decode(); !errors.Is(err, ErrUnsupportedFormat) {
+		t.Errorf("decoding the JPEG 2000 icon = %v, want ErrUnsupportedFormat", err)
+	}
+	if !bytes.Equal(icons[0].Payload(), jpeg2000header) {
+		t.Error("the JPEG 2000 icon's payload is not the stored bytes")
+	}
+
+	img, err := icons[1].Decode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := img.Bounds().Dx(); got != 128 {
+		t.Errorf("decoded a %dpx icon, want 128", got)
+	}
+	if !bytes.Equal(icons[1].Payload(), png128) {
+		t.Error("the PNG icon's payload is not the stored file")
+	}
+
+	// The returned slice is the caller's to reorder.
+	icons[0] = Entry{}
+	if again := d.Icons(); again[0].ID != "ic10" {
+		t.Errorf("Icons was affected by a change to an earlier result: %v", again[0].ID)
 	}
 }
 

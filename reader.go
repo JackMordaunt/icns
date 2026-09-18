@@ -6,27 +6,96 @@ import (
 	"fmt"
 	"image"
 	"io"
+	"slices"
 	"sort"
 )
 
 var jpeg2000header = []byte{0x00, 0x00, 0x00, 0x0c, 0x6a, 0x50, 0x20, 0x20}
 
+// Decoder reads an icns file and decodes its icons on demand, so a caller
+// after one size does not pay for the rest.
+type Decoder struct {
+	entries []Entry
+}
+
+// NewDecoder reads r and identifies the icons it holds without decoding any
+// of their pixels.
+func NewDecoder(r io.Reader) (*Decoder, error) {
+	entries, err := decode(r)
+	if err != nil {
+		return nil, err
+	}
+	// Largest first, keeping file order between icons of equal size.
+	sort.SliceStable(entries, func(ii, jj int) bool {
+		return entries[ii].Size > entries[jj].Size
+	})
+	return &Decoder{entries: entries}, nil
+}
+
+// Icons returns the icons in the file, largest first.
+func (d *Decoder) Icons() []Entry {
+	return slices.Clone(d.entries)
+}
+
+// Entry is one icon in an icns file, before its pixels are decoded.
+type Entry struct {
+	IconDescription
+
+	data []byte
+	// mask holds the alpha channel for ImageFormatRGB icons, when the file
+	// carries the matching mask element.
+	mask []byte
+}
+
+// Decode decodes the icon's pixels.
+func (e Entry) Decode() (image.Image, error) {
+	switch e.ImageFormat {
+	case ImageFormatJPEG2000:
+		return nil, fmt.Errorf("%w: icon %s is %s", ErrUnsupportedFormat, e.OsType, e.ImageFormat)
+	case ImageFormatRGB:
+		data := e.data
+		// it32 is the one colour element that prefixes its planes with four
+		// zero bytes.
+		if e.ID == "it32" && len(data) >= 4 && binary.BigEndian.Uint32(data[:4]) == 0 {
+			data = data[4:]
+		}
+		img, err := decodeRGB(data, e.mask, int(e.Size))
+		if err != nil {
+			return nil, fmt.Errorf("decoding icon %s %s: %w", e.OsType, e.ImageFormat, err)
+		}
+		return img, nil
+	default:
+		img, _, err := image.Decode(bytes.NewReader(e.data))
+		if err != nil {
+			return nil, fmt.Errorf("decoding icon %s %s: %w", e.OsType, e.ImageFormat, err)
+		}
+		return img, nil
+	}
+}
+
+// Payload returns the bytes the file stores for the icon, which lets a caller
+// handle a format this package cannot. For PNG and JPEG 2000 icons it is a
+// complete image file; for the colour and mask types it is the run-length
+// encoded colour planes, without the mask that holds their alpha.
+//
+// The bytes are not copied, and must not be modified.
+func (e Entry) Payload() []byte {
+	return e.data
+}
+
 // Decode returns the largest decodable icon in the icns file, ignoring all
 // other sizes. JPEG 2000 icons are skipped due to lack of image decoding
 // support, so the result may be smaller than the largest icon present.
 func Decode(r io.Reader) (image.Image, error) {
-	icons, err := decode(r)
+	d, err := NewDecoder(r)
 	if err != nil {
 		return nil, err
 	}
-	sort.Slice(icons, func(ii, jj int) bool {
-		return icons[ii].OsType.Size > icons[jj].OsType.Size
-	})
-	for _, icon := range icons {
+	for _, icon := range d.entries {
 		if icon.ImageFormat == ImageFormatJPEG2000 {
 			continue
 		}
-		return icon.image()
+		return icon.Decode()
 	}
 	return nil, fmt.Errorf("%w: only %s icons present", ErrUnsupportedFormat, ImageFormatJPEG2000)
 }
@@ -35,15 +104,15 @@ func Decode(r io.Reader) (image.Image, error) {
 // package can decode. JPEG 2000 is ignored due to lack of image decoding
 // support.
 func DecodeAll(r io.Reader) (images []image.Image, err error) {
-	icons, err := decode(r)
+	d, err := NewDecoder(r)
 	if err != nil {
 		return nil, err
 	}
-	for _, icon := range icons {
+	for _, icon := range d.entries {
 		if icon.ImageFormat == ImageFormatJPEG2000 {
 			continue
 		}
-		img, err := icon.image()
+		img, err := icon.Decode()
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +121,9 @@ func DecodeAll(r io.Reader) (images []image.Image, err error) {
 	if len(images) == 0 {
 		return nil, fmt.Errorf("%w: only %s icons present", ErrUnsupportedFormat, ImageFormatJPEG2000)
 	}
-	sort.Slice(images, func(ii, jj int) bool {
+	// An element may hold an image of a size other than the one its type
+	// names, so order by what was actually decoded.
+	sort.SliceStable(images, func(ii, jj int) bool {
 		var (
 			left  = images[ii].Bounds().Size()
 			right = images[jj].Bounds().Size()
@@ -62,13 +133,13 @@ func DecodeAll(r io.Reader) (images []image.Image, err error) {
 	return images, nil
 }
 
-// Probe extracts descriptions of the icons in the icns.
+// Probe extracts descriptions of the icons in the icns, largest first.
 func Probe(r io.Reader) (desc []IconDescription, _ error) {
-	icons, err := decode(r)
+	d, err := NewDecoder(r)
 	if err != nil {
 		return nil, err
 	}
-	for _, icon := range icons {
+	for _, icon := range d.entries {
 		desc = append(desc, icon.IconDescription)
 	}
 	return desc, nil
@@ -91,7 +162,7 @@ type element struct {
 // The file itself is one such element of type "icns" enclosing the rest.
 // Every length is checked against the data present, and input that disagrees
 // is reported as ErrMalformed.
-func decode(r io.Reader) (icons []iconReader, err error) {
+func decode(r io.Reader) (icons []Entry, err error) {
 	elements, err := elementsOf(r)
 	if err != nil {
 		return nil, err
@@ -110,7 +181,7 @@ func decode(r io.Reader) (icons []iconReader, err error) {
 			// decode.
 			continue
 		}
-		icon := iconReader{
+		icon := Entry{
 			IconDescription: IconDescription{OsType: osType},
 			data:            el.payload,
 		}
@@ -164,40 +235,6 @@ func elementsOf(r io.Reader) ([]element, error) {
 		offset += size
 	}
 	return elements, nil
-}
-
-type iconReader struct {
-	IconDescription
-	data []byte
-	// mask holds the alpha channel for ImageFormatRGB icons, when the file
-	// carries the matching mask element.
-	mask []byte
-}
-
-// image decodes the icon's pixels.
-func (ir iconReader) image() (image.Image, error) {
-	switch ir.ImageFormat {
-	case ImageFormatJPEG2000:
-		return nil, fmt.Errorf("%w: icon %s is %s", ErrUnsupportedFormat, ir.OsType, ir.ImageFormat)
-	case ImageFormatRGB:
-		data := ir.data
-		// it32 is the one colour element that prefixes its planes with four
-		// zero bytes.
-		if ir.ID == "it32" && len(data) >= 4 && binary.BigEndian.Uint32(data[:4]) == 0 {
-			data = data[4:]
-		}
-		img, err := decodeRGB(data, ir.mask, int(ir.Size))
-		if err != nil {
-			return nil, fmt.Errorf("decoding icon %s %s: %w", ir.OsType, ir.ImageFormat, err)
-		}
-		return img, nil
-	default:
-		img, _, err := image.Decode(bytes.NewReader(ir.data))
-		if err != nil {
-			return nil, fmt.Errorf("decoding icon %s %s: %w", ir.OsType, ir.ImageFormat, err)
-		}
-		return img, nil
-	}
 }
 
 func isOsType(ID string) bool {
