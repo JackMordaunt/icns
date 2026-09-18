@@ -1,6 +1,6 @@
 module github.com/jackmordaunt/icns/cmd/shell-extension
 
-go 1.23.0
+go 1.27.0
 
 require (
 	github.com/jackmordaunt/icns/v4 v4.0.0
