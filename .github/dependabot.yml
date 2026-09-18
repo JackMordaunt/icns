@@ -1,10 +1,17 @@
 version: 2
 updates:
   - package-ecosystem: "gomod"
-    directory: "/"
+    directories:
+      - "/"
+      - "/cmd/preview"
+      - "/cmd/shell-extension"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+    groups:
+      golang-x:
+        patterns:
+          - "golang.org/x/*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
