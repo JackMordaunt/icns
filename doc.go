@@ -15,6 +15,7 @@
 // using this library from the command line. It supports piping, which is
 // something `iconutil` does not do, making it substantially easier to wrap.
 //
-// Note: All icons within the icns are sized for high dpi retina screens, using
-// the appropriate icns OSTypes.
+// Note: icns files are written with an icon at every size macOS draws, the
+// retina OSTypes for the larger ones and the colour and mask pair Apple still
+// uses at 16 and 32 pixels.
 package icns

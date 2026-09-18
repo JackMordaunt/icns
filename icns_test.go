@@ -59,9 +59,9 @@ func TestRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 128 (ic07), 64 (ic12) and 32 (ic11); no retina OSType exists for 16px.
-	if len(imgs) != 3 {
-		t.Fatalf("DecodeAll returned %d icons, want 3", len(imgs))
+	// ic07, ic12, ic11, il32 and is32.
+	if len(imgs) != 5 {
+		t.Fatalf("DecodeAll returned %d icons, want 5", len(imgs))
 	}
 	if !imageCompare(imgs[0], src) {
 		t.Fatal("largest decoded icon differs from the source image")
@@ -103,7 +103,8 @@ func TestInterpolationFunctions(t *testing.T) {
 				}
 				sides = append(sides, b.Dx())
 			}
-			if want := []int{128, 64, 32}; !reflect.DeepEqual(sides, want) {
+			// 32 twice: ic11 carries 16@2x and il32 carries a true 32.
+			if want := []int{128, 64, 32, 32, 16}; !reflect.DeepEqual(sides, want) {
 				st.Fatalf("icon sides = %v, want %v", sides, want)
 			}
 			// A resampled icon must carry the source's colour, not a blank
@@ -112,6 +113,50 @@ func TestInterpolationFunctions(t *testing.T) {
 				st.Error("the resampled 64px icon is transparent at its centre")
 			}
 		})
+	}
+}
+
+// TestEncodedElements pins the set of elements the encoder writes, which
+// matches what iconutil produces for a full iconset.
+func TestEncodedElements(t *testing.T) {
+	t.Parallel()
+	buf := bytes.NewBuffer(nil)
+	if err := Encode(buf, gradient(1024)); err != nil {
+		t.Fatal(err)
+	}
+	els, err := elementsOf(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, el := range els {
+		got = append(got, el.id)
+	}
+	want := []string{
+		"ic10", "ic14", "ic09", "ic13", "ic08", "ic07", "ic12",
+		"ic11", "il32", "l8mk", "is32", "s8mk",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("elements = %v, want %v", got, want)
+	}
+}
+
+// TestLegacyRoundTrip checks that a 16px source survives the colour and mask
+// encoding unchanged: it is written at its own size, so nothing is resampled
+// and the planes are lossless.
+func TestLegacyRoundTrip(t *testing.T) {
+	t.Parallel()
+	src := gradient(16)
+	buf := bytes.NewBuffer(nil)
+	if err := Encode(buf, src); err != nil {
+		t.Fatal(err)
+	}
+	img, err := Decode(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !imageCompare(img, src) {
+		t.Fatal("the decoded icon differs from the source")
 	}
 }
 

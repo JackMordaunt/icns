@@ -3,6 +3,7 @@ package icns
 import (
 	"fmt"
 	"image"
+	"image/color"
 )
 
 // Legacy icon types store their colour as three run-length encoded planes,
@@ -41,6 +42,68 @@ func unpackRLE(data []byte, want int) ([]byte, error) {
 		return nil, fmt.Errorf("%w: expanded to %d bytes, want %d", ErrMalformed, len(out), want)
 	}
 	return out, nil
+}
+
+// packRLE compresses data into the icns variant of PackBits. A run of three
+// or more equal bytes is worth encoding, since it costs two bytes either way,
+// and anything shorter goes out as literals. Data that does not compress is
+// returned unchanged, which the decoder recognises by its length.
+func packRLE(data []byte) []byte {
+	out := make([]byte, 0, len(data))
+	for i := 0; i < len(data); {
+		run := 1
+		for i+run < len(data) && run < maxRepeat && data[i+run] == data[i] {
+			run++
+		}
+		if run >= 3 {
+			out = append(out, byte(run+125), data[i])
+			i += run
+			continue
+		}
+		// Literals up to the next run of three, since that run encodes more
+		// cheaply on its own.
+		start := i
+		for i < len(data) && i-start < maxLiteral {
+			if i+2 < len(data) && data[i] == data[i+1] && data[i] == data[i+2] {
+				break
+			}
+			i++
+		}
+		out = append(out, byte(i-start-1))
+		out = append(out, data[start:i]...)
+	}
+	if len(out) >= len(data) {
+		return data
+	}
+	return out
+}
+
+const (
+	// maxLiteral is the longest literal run, from a lead byte of 127.
+	maxLiteral = 128
+	// maxRepeat is the longest repeat, from a lead byte of 255.
+	maxRepeat = 130
+)
+
+// splitPlanes separates an image into the three colour planes and the alpha
+// mask that the legacy elements store separately. The planes hold straight
+// colour, so alpha is divided back out.
+func splitPlanes(img image.Image, side int) (planes, mask []byte) {
+	pixels := side * side
+	planes = make([]byte, pixels*3)
+	mask = make([]byte, pixels)
+	origin := img.Bounds().Min
+	for y := 0; y < side; y++ {
+		for x := 0; x < side; x++ {
+			c := color.NRGBAModel.Convert(img.At(origin.X+x, origin.Y+y)).(color.NRGBA)
+			i := y*side + x
+			planes[i] = c.R
+			planes[pixels+i] = c.G
+			planes[pixels*2+i] = c.B
+			mask[i] = c.A
+		}
+	}
+	return planes, mask
 }
 
 // decodeRGB builds an image from run-length encoded colour planes and the

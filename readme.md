@@ -16,7 +16,7 @@ With this library you can use pure Go to create `icns` files from any source ima
 
 A small CLI app `icnsify` is provided allowing you to create icns files using this library from the command line. It supports piping, which is something `iconutil` does not do, making it substantially easier to wrap or chuck into a shell pipeline.
 
-Note: All icons within the `icns` are sized for high dpi retina screens, using the appropriate `icns` OSTypes.
+Note: `icns` files are written with an icon at every size macOS draws, the retina OSTypes for the larger ones and the colour and mask pair Apple still uses at 16 and 32 pixels. Decoding additionally understands the legacy `is32`, `il32`, `ih32` and `it32` elements, so icons written before macOS 10.5 read correctly.
 
 ## GUI
 
