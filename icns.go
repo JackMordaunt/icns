@@ -219,10 +219,13 @@ var osTypes = []OsType{
 	{ID: "icp5", Size: 32},
 	{ID: "icp4", Size: 16},
 
+	// The small sizes are written as colour and mask rather than PNG, which
+	// is what Apple still emits for them: icp4 and icp5 hold PNG but do not
+	// render from an app bundle.
 	{ID: "it32", Size: 128, enc: encodingRGB, mask: "t8mk"},
 	{ID: "ih32", Size: 48, enc: encodingRGB, mask: "h8mk"},
-	{ID: "il32", Size: 32, enc: encodingRGB, mask: "l8mk"},
-	{ID: "is32", Size: 16, enc: encodingRGB, mask: "s8mk"},
+	{ID: "il32", Size: 32, enc: encodingRGB, mask: "l8mk", emit: true},
+	{ID: "is32", Size: 16, enc: encodingRGB, mask: "s8mk", emit: true},
 }
 
 // getTypesFromSize returns the writable types for the given icon size (in px).
