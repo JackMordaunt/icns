@@ -65,6 +65,11 @@ func run() error {
 			usage()
 			return errUsage
 		}
+		// A directory is an iconset: artwork per slot rather than one image
+		// to resize for every size.
+		if info, err := os.Stat(in); err == nil && info.IsDir() {
+			return encodeIconSet(in, out, algorithm)
+		}
 		sourcef, err := os.Open(in)
 		if err != nil {
 			return fmt.Errorf("opening source image: %w", err)
