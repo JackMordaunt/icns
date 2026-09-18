@@ -68,21 +68,22 @@ func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error)
 	work := sync.WaitGroup{}
 	var iconIdx int
 	for _, size := range sizesFrom(biggest) {
-		osTypes, ok := getTypesFromSize(size)
+		types, ok := getTypesFromSize(size)
 		if !ok {
 			continue
 		}
-		size := size
-		for _, osType := range osTypes {
+		for _, osType := range types {
 			work.Add(1)
-			go func(iconIdx int, osType OsType, size uint) {
-				icons[iconIdx] = &Icon{
+			// iconIdx counts across both loops, so it is passed rather than
+			// captured; size and osType belong to their iteration.
+			go func(idx int) {
+				defer work.Done()
+				icons[idx] = &Icon{
 					Type:  osType,
 					Image: resizeSquare(img, size, interp),
 				}
-				work.Done()
-			}(iconIdx, osType, size)
-			iconIdx += 1
+			}(iconIdx)
+			iconIdx++
 		}
 	}
 	work.Wait()
