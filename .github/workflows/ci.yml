@@ -74,7 +74,17 @@ jobs:
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
-      - run: go test -count=1 -v -run 'TestIconutil' .
+      # Annotations show on the run itself, so a failure here is legible
+      # without opening the log.
+      - name: iconutil oracle
+        run: |
+          status=0
+          go test -count=1 -v -run 'TestIconutil' . 2>&1 | tee oracle.log || status=$?
+          if [ "$status" -ne 0 ]; then
+            grep -E 'oracle_test\.go|FAIL|iconutil' oracle.log | head -40 |
+              while IFS= read -r line; do echo "::error::$line"; done || true
+          fi
+          exit "$status"
 
   shell-extension:
     name: shell extension
@@ -90,6 +100,7 @@ jobs:
           cache-dependency-path: cmd/shell-extension/go.sum
       # The DLL is built with -buildmode=c-shared, which needs cgo.
       - run: gcc --version
+      - run: go vet ./...
       - run: go test -count=1 ./...
       # A build outside the workspace belongs here, to cover what `go install`
       # gets, but the module uses library API newer than any published
@@ -114,6 +125,7 @@ jobs:
           go-version-file: cmd/preview/go.mod
           cache-dependency-path: cmd/preview/go.sum
       - run: go build ./...
+      - run: go vet ./...
       # The render test skips itself where the runner has no GPU to draw on.
       - run: go test -count=1 ./...
       - run: go build ./...
@@ -140,9 +152,10 @@ jobs:
             echo "$unformatted"
             exit 1
           fi
-      # ./... covers only the module holding the working directory, even in a
-      # workspace, so each module is named.
-      - run: go vet ./... ./cmd/preview/... ./cmd/shell-extension/...
+      # Only the library, which builds anywhere. The command modules are
+      # vetted in their own jobs: preview needs a desktop toolchain that Linux
+      # runners lack, and the shell extension has no files outside Windows.
+      - run: go vet ./...
       - name: govulncheck
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
