@@ -182,6 +182,11 @@ func FuzzDecode(f *testing.F) {
 	argb, _ := argbElement(16)
 	f.Add(file(encodeElement("ic04", argb)))
 	f.Add(file(encodeElement("ic04", []byte("ARGB"))))
+	// Indexed icons, whose mask lives in a companion element.
+	f.Add(file(encodeElement("icl8", make([]byte, 32*32)), encodeElement("ICN#", bitmapMask(32, 32))))
+	f.Add(file(encodeElement("icl4", make([]byte, 32*32/2))))
+	f.Add(file(encodeElement("ICN#", bitmapMask(32, 32))))
+	f.Add(file(encodeElement("icm8", make([]byte, 16*12))))
 	f.Fuzz(func(t *testing.T, data []byte) {
 		Probe(bytes.NewReader(data))
 		Decode(bytes.NewReader(data))
