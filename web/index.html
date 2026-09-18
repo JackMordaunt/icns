@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Icon converter</title>
+<style>
+  :root { color-scheme: light dark; --edge: #8883; --accent: #2060c0; }
+  body { margin: 0; font: 15px/1.5 system-ui, sans-serif; }
+  main { max-width: 42rem; margin: 0 auto; padding: 2rem 1rem; }
+  h1 { margin: 0 0 .25rem; font-size: 1.6rem; }
+  .lede { margin: 0 0 1.5rem; opacity: .75; }
+  #drop { border: 2px dashed var(--edge); border-radius: .5rem; padding: 3rem 1rem; text-align: center; }
+  #drop.over { border-color: var(--accent); }
+  fieldset { border: 1px solid var(--edge); border-radius: .5rem; margin: 1.5rem 0; }
+  label { margin-right: 1rem; }
+  #status { min-height: 1.5rem; }
+  #status.bad { color: #c02020; }
+  ul { padding-left: 1.25rem; }
+  li { font-family: ui-monospace, monospace; font-size: .85rem; }
+  a#download { display: inline-block; margin-top: .5rem; padding: .5rem 1rem;
+               background: var(--accent); color: #fff; border-radius: .35rem; text-decoration: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Icon converter</h1>
+  <p class="lede">Convert app icons between <code>.icns</code>, <code>.ico</code> and ordinary images.
+     Everything runs in your browser — your image is never uploaded.</p>
+  <p class="lede">A demonstration of <code>cmd/wasm</code>, the browser build of this library.</p>
+
+  <div id="drop">
+    Drop an image here, or <label><a href="#" id="pick">choose a file</a><input type="file" id="file" hidden></label>
+  </div>
+
+  <fieldset>
+    <legend>Convert to</legend>
+    <label><input type="radio" name="format" value="icns" checked> .icns (macOS)</label>
+    <label><input type="radio" name="format" value="ico"> .ico (Windows)</label>
+    <label><input type="radio" name="format" value="png"> .png</label>
+    <label><input type="radio" name="format" value="jpg"> .jpg</label>
+  </fieldset>
+
+  <p id="status"></p>
+  <ul id="icons"></ul>
+  <a id="download" hidden>Download</a>
+</main>
+
+<script src="wasm_exec.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+
+// The engine is only fetched once someone actually has a file, so the page
+// itself stays small.
+let starting;
+function engine() {
+  if (!starting) {
+    starting = (async () => {
+      const go = new Go();
+      let wasm;
+      try {
+        wasm = await WebAssembly.instantiateStreaming(fetch('main.wasm'), go.importObject);
+      } catch {
+        // Some static hosts serve .wasm with the wrong content type, which
+        // streaming instantiation refuses.
+        const bytes = await (await fetch('main.wasm')).arrayBuffer();
+        wasm = await WebAssembly.instantiate(bytes, go.importObject);
+      }
+      // Not awaited: the program installs its API and then parks forever.
+      go.run(wasm.instance);
+      if (!window.icns) throw new Error('the converter did not start');
+    })();
+  }
+  return starting;
+}
+
+function say(text, bad) {
+  $('status').textContent = text;
+  $('status').className = bad ? 'bad' : '';
+}
+
+async function handle(file) {
+  $('download').hidden = true;
+  $('icons').replaceChildren();
+  say('Loading the converter…');
+  try {
+    await engine();
+  } catch (err) {
+    say(err.message, true);
+    return;
+  }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const found = icns.inspect(bytes);
+  if (found.ok) {
+    for (const icon of found.icons) {
+      const li = document.createElement('li');
+      li.textContent = icon;
+      $('icons').appendChild(li);
+    }
+  }
+  const format = document.querySelector('input[name=format]:checked').value;
+  say('Converting…');
+  const out = icns.convert(bytes, format);
+  if (!out.ok) {
+    say(out.error, true);
+    return;
+  }
+  const name = file.name.replace(/\.[^.]*$/, '') + '.' + format;
+  const link = $('download');
+  link.href = URL.createObjectURL(new Blob([out.data], { type: 'application/octet-stream' }));
+  link.download = name;
+  link.textContent = 'Download ' + name;
+  link.hidden = false;
+  say(`${file.name} → ${name} (${out.data.length.toLocaleString()} bytes)`);
+}
+
+const drop = $('drop');
+for (const name of ['dragenter', 'dragover']) {
+  drop.addEventListener(name, (e) => { e.preventDefault(); drop.classList.add('over'); });
+}
+for (const name of ['dragleave', 'drop']) {
+  drop.addEventListener(name, (e) => { e.preventDefault(); drop.classList.remove('over'); });
+}
+drop.addEventListener('drop', (e) => {
+  if (e.dataTransfer.files.length) handle(e.dataTransfer.files[0]);
+});
+$('pick').addEventListener('click', (e) => { e.preventDefault(); $('file').click(); });
+$('file').addEventListener('change', (e) => {
+  if (e.target.files.length) handle(e.target.files[0]);
+});
+</script>
+</body>
+</html>
