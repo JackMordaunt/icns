@@ -13,13 +13,10 @@ import (
 	"strings"
 
 	"gioui.org/app"
+	"gioui.org/io/event"
 	"gioui.org/io/key"
-	"gioui.org/io/pointer"
-	"gioui.org/io/system"
-	"gioui.org/layout"
 	l "gioui.org/layout"
 	"gioui.org/op"
-	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget"
@@ -33,19 +30,17 @@ import (
 
 func main() {
 	ui := UI{
-		Window: app.NewWindow(app.Title("icnsify"), app.MinSize(700, 250)),
-		Th:     m.NewTheme(),
+		Window:        new(app.Window),
+		Th:            m.NewTheme(),
+		ProcessedIcon: make(chan ProcessedIconResult, 1),
 	}
+	ui.Window.Option(app.Title("icnsify"), app.MinSize(unit.Dp(700), unit.Dp(250)))
 	if len(os.Args) > 1 {
 		if file := os.Args[1]; filepath.Ext(file) == ".icns" {
-			go func() {
+			ui.Load(func() (string, []image.Image, error) {
 				imgs, err := LoadImage(file)
-				ui.ProcessedIcon <- ProcessedIconResult{
-					Imgs: imgs,
-					File: filepath.Base(file),
-					Err:  err,
-				}
-			}()
+				return file, imgs, err
+			})
 		}
 	}
 	go func() {
@@ -62,25 +57,30 @@ type (
 	D = l.Dimensions
 )
 
+// thumbnail is one icon resolution in the sidebar.
+type thumbnail struct {
+	widget.Image
+	Click widget.Clickable
+}
+
 // UI contains all state for the UI.
 type UI struct {
 	*app.Window
 	Th *m.Theme
 
 	// Preview points to the currently selected icon to render in the preview area.
-	Preview *widget.Image
+	Preview *thumbnail
 	// Icons contains all the different resolutions found in the icns file.
-	Icons []widget.Image
+	Icons []*thumbnail
 	// FileName is the name of the source icon file on disk.
 	FileName string
 	// Source is the original image data.
 	Source image.Image
 
 	OpenBtn widget.Clickable
-	SideBar layout.List
+	SideBar l.List
 
 	ProcessedIcon chan ProcessedIconResult
-	Processing    bool
 }
 
 type ProcessedIconResult struct {
@@ -89,112 +89,120 @@ type ProcessedIconResult struct {
 	Err  error
 }
 
+// Load runs work off the UI goroutine and wakes the window once it has a
+// result to collect.
+func (ui *UI) Load(work func() (string, []image.Image, error)) {
+	go func() {
+		file, imgs, err := work()
+		ui.ProcessedIcon <- ProcessedIconResult{
+			File: filepath.Base(file),
+			Imgs: imgs,
+			Err:  err,
+		}
+		ui.Window.Invalidate()
+	}()
+}
+
 // Loop initializes UI state and starts the render loop.
 func (ui *UI) Loop() error {
-	ui.ProcessedIcon = make(chan ProcessedIconResult)
-	var (
-		ops    op.Ops
-		events = ui.Window.Events()
-	)
-	for event := range events {
-		switch event := (event).(type) {
-		case system.DestroyEvent:
+	var ops op.Ops
+	for {
+		switch event := ui.Window.Event().(type) {
+		case app.DestroyEvent:
 			return event.Err
-		case system.FrameEvent:
-			gtx := l.NewContext(&ops, event)
+		case app.FrameEvent:
+			gtx := app.NewContext(&ops, event)
 			ui.Update(gtx)
 			ui.Layout(gtx)
 			event.Frame(gtx.Ops)
 		}
 	}
-	return nil
 }
 
 // Update the UI state.
 func (ui *UI) Update(gtx C) {
-	if ui.Processing {
-		op.InvalidateOp{}.Add(gtx.Ops)
-	}
-	for _, event := range gtx.Events(ui) {
-		if k, ok := event.(key.Event); ok {
-			if k.Name == "S" && k.Modifiers.Contain(key.ModShortcut) && ui.Source != nil {
-				if err := func() error {
-					file, err := zenity.SelectFileSave(
-						zenity.Title("Save as icns"),
-						zenity.Filename(UseExt(ui.FileName, ".icns")))
-					if err != nil {
-						return fmt.Errorf("selecting file: %w", err)
-					}
-					if err := ui.SaveAs(file); err != nil {
-						return fmt.Errorf("saving to icns: %w", err)
-					}
-					return nil
-				}(); err != nil {
-					log.Printf("saving png as icns: %v", err)
-				}
-			}
+	for {
+		e, ok := gtx.Event(key.Filter{
+			Focus:    ui,
+			Name:     "S",
+			Required: key.ModShortcut,
+		})
+		if !ok {
+			break
+		}
+		k, ok := e.(key.Event)
+		if !ok || k.State != key.Press || ui.Source == nil {
+			continue
+		}
+		if err := ui.SaveAsPrompt(); err != nil {
+			log.Printf("saving png as icns: %v", err)
 		}
 	}
-	for ii := range ui.Icons {
-		for _, event := range gtx.Events(ui.Icons[ii]) {
-			if c, ok := event.(pointer.Event); ok && c.Type == pointer.Release {
-				ui.Preview = &ui.Icons[ii]
-			}
+	for _, icon := range ui.Icons {
+		if icon.Click.Clicked(gtx) {
+			ui.Preview = icon
 		}
 	}
-	if ui.OpenBtn.Clicked() {
-		ui.Processing = true
-		go func() {
-			imgs, file, err := func() ([]image.Image, string, error) {
-				file, err := zenity.SelectFile(zenity.Title("Select .icns file"))
-				if err != nil {
-					return nil, "", fmt.Errorf("selecting file: %w", err)
-				}
-				imgs, err := LoadImage(file)
-				if err != nil {
-					return nil, "", err
-				}
-				return imgs, file, nil
-			}()
-			ui.ProcessedIcon <- ProcessedIconResult{
-				File: filepath.Base(file),
-				Imgs: imgs,
-				Err:  err,
+	if ui.OpenBtn.Clicked(gtx) {
+		ui.Load(func() (string, []image.Image, error) {
+			file, err := zenity.SelectFile(zenity.Title("Select .icns file"))
+			if err != nil {
+				return "", nil, fmt.Errorf("selecting file: %w", err)
 			}
-		}()
+			imgs, err := LoadImage(file)
+			if err != nil {
+				return "", nil, err
+			}
+			return file, imgs, nil
+		})
 	}
 	select {
 	case r := <-ui.ProcessedIcon:
 		if r.Err != nil {
 			// TODO(jfm): push to dismissable error stack.
 			log.Printf("loading icns file: %v", r.Err)
-		} else {
-			ui.Icons = ui.Icons[:0]
-			for _, img := range r.Imgs {
-				ui.Icons = append(ui.Icons, widget.Image{
+			break
+		}
+		ui.Icons = ui.Icons[:0]
+		for _, img := range r.Imgs {
+			ui.Icons = append(ui.Icons, &thumbnail{
+				Image: widget.Image{
 					Src:      paint.NewImageOp(img),
 					Fit:      widget.Contain,
 					Position: l.Center,
-				})
-			}
-			if len(r.Imgs) > 0 {
-				ui.Source = r.Imgs[0]
-			}
-			if len(ui.Icons) > 0 {
-				ui.Preview = &ui.Icons[0]
-			}
-			ui.FileName = r.File
-			ui.Processing = false
+				},
+			})
 		}
+		ui.Preview = nil
+		if len(ui.Icons) > 0 {
+			ui.Source = r.Imgs[0]
+			ui.Preview = ui.Icons[0]
+		}
+		ui.FileName = r.File
 	default:
 	}
+}
+
+// SaveAsPrompt asks for a destination and writes the previewed icon to it.
+func (ui *UI) SaveAsPrompt() error {
+	file, err := zenity.SelectFileSave(
+		zenity.Title("Save as icns"),
+		zenity.Filename(UseExt(ui.FileName, ".icns")))
+	if err != nil {
+		return fmt.Errorf("selecting file: %w", err)
+	}
+	if err := ui.SaveAs(file); err != nil {
+		return fmt.Errorf("saving to icns: %w", err)
+	}
+	return nil
 }
 
 // Layout the UI.
 func (ui *UI) Layout(gtx C) D {
 	ui.SideBar.Axis = l.Vertical
-	key.InputOp{Tag: ui}.Add(gtx.Ops)
-	key.FocusOp{Tag: ui}.Add(gtx.Ops)
+	// The window itself takes the keyboard, for the save shortcut.
+	event.Op(gtx.Ops, ui)
+	gtx.Execute(key.FocusCmd{Tag: ui})
 	return l.Flex{
 		Axis: l.Horizontal,
 	}.Layout(
@@ -220,13 +228,13 @@ func (ui *UI) LayoutSideBar(gtx C) D {
 	}.Layout(
 		gtx,
 		l.Rigid(func(gtx C) D {
-			return l.UniformInset((5)).Layout(gtx, func(gtx C) D {
-				return m.Label(ui.Th, (15), ui.FileName).Layout(gtx)
+			return l.UniformInset(unit.Dp(5)).Layout(gtx, func(gtx C) D {
+				return m.Label(ui.Th, unit.Sp(15), ui.FileName).Layout(gtx)
 			})
 		}),
 		l.Flexed(1, func(gtx C) D {
 			return ui.SideBar.Layout(gtx, len(ui.Icons), func(gtx C, ii int) D {
-				return l.UniformInset((15)).Layout(gtx, func(gtx C) D {
+				return l.UniformInset(unit.Dp(15)).Layout(gtx, func(gtx C) D {
 					cs := &gtx.Constraints
 					cs.Max.X = gtx.Dp(ThumbnailWidth)
 					return ui.LayoutThumbnail(gtx, ii)
@@ -241,51 +249,46 @@ func (ui *UI) LayoutPreviewArea(gtx C) D {
 	return l.Center.Layout(gtx, func(gtx C) D {
 		if ui.Preview == nil {
 			btn := m.Button(ui.Th, &ui.OpenBtn, "Open")
-			btn.TextSize = (25)
+			btn.TextSize = unit.Sp(25)
 			return btn.Layout(gtx)
 		}
-		return ui.Preview.Layout(gtx)
+		return ui.Preview.Image.Layout(gtx)
 	})
 }
 
 // LayoutThumbnail displays a specific icon thumbnail.
 func (ui *UI) LayoutThumbnail(gtx C, ii int) D {
-	return l.Stack{}.Layout(
-		gtx,
-		l.Stacked(func(gtx C) D {
-			return l.Flex{
-				Axis:      l.Vertical,
-				Alignment: l.Middle,
-			}.Layout(
-				gtx,
-				l.Rigid(func(gtx C) D {
-					return ui.Icons[ii].Layout(gtx)
-				}),
-				l.Rigid(func(gtx C) D {
-					return m.Label(ui.Th, (15), strconv.Itoa(ii+1)).
-						Layout(gtx)
-				}),
-			)
-		}),
-		l.Expanded(func(gtx C) D {
-			if ui.Icons[ii] == *ui.Preview {
+	icon := ui.Icons[ii]
+	return icon.Click.Layout(gtx, func(gtx C) D {
+		return l.Stack{}.Layout(
+			gtx,
+			l.Stacked(func(gtx C) D {
+				return l.Flex{
+					Axis:      l.Vertical,
+					Alignment: l.Middle,
+				}.Layout(
+					gtx,
+					l.Rigid(func(gtx C) D {
+						return icon.Image.Layout(gtx)
+					}),
+					l.Rigid(func(gtx C) D {
+						return m.Label(ui.Th, unit.Sp(15), strconv.Itoa(ii+1)).
+							Layout(gtx)
+					}),
+				)
+			}),
+			l.Expanded(func(gtx C) D {
+				if ui.Preview != icon {
+					return D{}
+				}
 				return c.Rect{
 					Size:  gtx.Constraints.Min,
 					Color: SelectedHighlight,
 					Radii: 4,
 				}.Layout(gtx)
-			}
-			return D{}
-		}),
-		l.Expanded(func(gtx C) D {
-			defer clip.Rect(image.Rectangle{Max: gtx.Constraints.Min}).Push(gtx.Ops).Pop()
-			pointer.InputOp{
-				Tag:   ui.Icons[ii],
-				Types: pointer.Release,
-			}.Add(gtx.Ops)
-			return D{}
-		}),
-	)
+			}),
+		)
+	})
 }
 
 // SaveAs saves the previewed image as an icns icon at the path specified.
@@ -302,16 +305,6 @@ func (ui *UI) SaveAs(path string) error {
 		return fmt.Errorf("encoding icns: %w", err)
 	}
 	return nil
-}
-
-// LoadImages loads the specified images to preview.
-// Safe for concurrent use.
-func (ui *UI) LoadImages(name string, imgs []image.Image) {
-	ui.ProcessedIcon <- ProcessedIconResult{
-		Imgs: imgs,
-		File: name,
-		Err:  nil,
-	}
 }
 
 // LoadImage will load all icons from an icns file, or generate them from a png file.
