@@ -41,8 +41,15 @@ func run() error {
 		"Output path, defaults to <path/to/image>.(icns|png) depending on input.")
 	intFlag(&resize, "resize", "r", 5,
 		"Quality of resize algorithm, 0 to 5 from fastest to slowest.")
+	var showVersion bool
+	boolFlag(&showVersion, "version", "v", "Print the version and exit.")
 	flag.Usage = usage
 	flag.Parse()
+
+	if showVersion {
+		fmt.Println(buildInfo())
+		return nil
+	}
 
 	var (
 		input  io.Reader
