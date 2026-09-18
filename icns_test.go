@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"image"
+	"image/color"
 	"image/jpeg"
 	"image/png"
 	"io"
@@ -64,6 +65,91 @@ func TestRoundTrip(t *testing.T) {
 	}
 	if !imageCompare(imgs[0], src) {
 		t.Fatal("largest decoded icon differs from the source image")
+	}
+}
+
+// TestInterpolationFunctions checks that every algorithm, and any value
+// outside the enumeration, produces the full icon set at the right sizes.
+func TestInterpolationFunctions(t *testing.T) {
+	t.Parallel()
+	src := gradient(128)
+	tests := []struct {
+		desc   string
+		interp InterpolationFunction
+	}{
+		{"nearest neighbor", NearestNeighbor},
+		{"bilinear", Bilinear},
+		{"bicubic", Bicubic},
+		{"mitchell-netravali", MitchellNetravali},
+		{"lanczos2", Lanczos2},
+		{"lanczos3", Lanczos3},
+		{"out of range falls back to the default", InterpolationFunction(99)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(st *testing.T) {
+			buf := bytes.NewBuffer(nil)
+			if err := NewEncoder(buf).WithAlgorithm(tt.interp).Encode(src); err != nil {
+				st.Fatalf("encoding: %v", err)
+			}
+			imgs, err := DecodeAll(buf)
+			if err != nil {
+				st.Fatalf("decoding: %v", err)
+			}
+			var sides []int
+			for _, img := range imgs {
+				b := img.Bounds()
+				if b.Dx() != b.Dy() {
+					st.Fatalf("icon is not square: %v", b)
+				}
+				sides = append(sides, b.Dx())
+			}
+			if want := []int{128, 64, 32}; !reflect.DeepEqual(sides, want) {
+				st.Fatalf("icon sides = %v, want %v", sides, want)
+			}
+			// A resampled icon must carry the source's colour, not a blank
+			// or transparent frame.
+			if _, _, _, a := imgs[1].At(32, 32).RGBA(); a == 0 {
+				st.Error("the resampled 64px icon is transparent at its centre")
+			}
+		})
+	}
+}
+
+// TestResizeKeepsColorOutOfTransparentPixels guards the reason resampling
+// happens in premultiplied space. Filtering an opaque edge against
+// transparent pixels in straight space drags their colour into the edge,
+// the familiar dark halo around a downscaled icon.
+func TestResizeKeepsColorOutOfTransparentPixels(t *testing.T) {
+	t.Parallel()
+	// Left half opaque white, right half transparent black.
+	src := image.NewNRGBA(image.Rect(0, 0, 64, 64))
+	for y := 0; y < 64; y++ {
+		for x := 0; x < 32; x++ {
+			src.SetNRGBA(x, y, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
+		}
+	}
+	// Bilinear has no negative lobes, so every output pixel is a plain
+	// average of its neighbours and the expected values are exact.
+	got := resizeSquare(src, 32, Bilinear.scaler())
+	var blended int
+	for y := got.Bounds().Min.Y; y < got.Bounds().Max.Y; y++ {
+		for x := got.Bounds().Min.X; x < got.Bounds().Max.X; x++ {
+			c := color.NRGBAModel.Convert(got.At(x, y)).(color.NRGBA)
+			if c.A == 0 {
+				continue // Fully transparent: colour is unobservable.
+			}
+			if c.A < 255 {
+				blended++
+			}
+			if c.R != 255 || c.G != 255 || c.B != 255 {
+				t.Fatalf("pixel (%d,%d) is %v, want white at any alpha", x, y, c)
+			}
+		}
+	}
+	// Without pixels that actually mix the two halves there is nothing to
+	// bleed, and the check above would pass for the wrong reason.
+	if blended == 0 {
+		t.Fatal("no partially transparent pixels: the edge never blended")
 	}
 }
 
