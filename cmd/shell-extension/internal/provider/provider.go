@@ -198,16 +198,31 @@ func Thumbnail(r io.Reader, cx int) (*image.RGBA, error) {
 	if cx <= 0 {
 		return nil, fmt.Errorf("invalid thumbnail size %d", cx)
 	}
-	images, err := icns.DecodeAll(r) // Sorted largest first.
+	d, err := icns.NewDecoder(r)
 	if err != nil {
 		return nil, err
 	}
-	chosen := images[0]
-	for _, img := range images {
-		if side(img) < cx {
+	// The icons arrive largest first, so the last one still at least cx wide
+	// is the smallest that does not need upscaling. Only that one is decoded.
+	var (
+		best  icns.Entry
+		found bool
+	)
+	for _, icon := range d.Icons() {
+		if icon.ImageFormat == icns.ImageFormatJPEG2000 {
+			continue
+		}
+		if found && int(icon.Size) < cx {
 			break
 		}
-		chosen = img
+		best, found = icon, true
+	}
+	if !found {
+		return nil, fmt.Errorf("no icon in a format this build can decode")
+	}
+	chosen, err := best.Decode()
+	if err != nil {
+		return nil, err
 	}
 	// Normalise to premultiplied RGBA, which is what a GDI ARGB bitmap
 	// wants, shrinking the icon to fit the cx square on the way if needed.
