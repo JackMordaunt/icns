@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"io"
 	"reflect"
 	"testing"
 )
@@ -157,6 +158,43 @@ func TestDecoder(t *testing.T) {
 	icons[0] = Entry{}
 	if again := d.Icons(); again[0].ID != "ic10" {
 		t.Errorf("Icons was affected by a change to an earlier result: %v", again[0].ID)
+	}
+}
+
+// TestDecodeUsesRegisteredFormats checks that an element holding a whole
+// image file is handed to whatever decoder the program registered. That is
+// how a JPEG 2000 icon is read without this package depending on a codec for
+// it: the caller imports one, and these elements start decoding.
+func TestDecodeUsesRegisteredFormats(t *testing.T) {
+	// Registration is global and cannot be undone, so this uses a magic
+	// nothing else does and does not run in parallel.
+	const magic = "notarealformat"
+	want := color.NRGBA{R: 0x11, G: 0x22, B: 0x33, A: 0xFF}
+	image.RegisterFormat("notareal", magic,
+		func(r io.Reader) (image.Image, error) { return solid(64, want), nil },
+		func(r io.Reader) (image.Config, error) {
+			return image.Config{Width: 64, Height: 64, ColorModel: color.NRGBAModel}, nil
+		})
+
+	data := file(encodeElement("ic12", []byte(magic+" and then the pixels")))
+	img, err := Decode(bytes.NewReader(data))
+	if err != nil {
+		t.Fatalf("an element in a registered format did not decode: %v", err)
+	}
+	if got := centre(img); got != want {
+		t.Fatalf("decoded %v, want %v from the registered decoder", got, want)
+	}
+}
+
+// TestDecodeWithoutARegisteredFormat checks the other side of that: an icon
+// nothing can read is reported as unsupported rather than as corrupt, which
+// is what lets the callers above skip past it to a size they can read.
+func TestDecodeWithoutARegisteredFormat(t *testing.T) {
+	t.Parallel()
+	data := file(encodeElement("ic07", append(jpeg2000header, 1, 2, 3, 4)))
+	_, err := Decode(bytes.NewReader(data))
+	if !errors.Is(err, ErrUnsupportedFormat) {
+		t.Fatalf("error = %v, want ErrUnsupportedFormat", err)
 	}
 }
 

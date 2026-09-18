@@ -16,7 +16,9 @@ With this library you can use pure Go to create `icns` files from any source ima
 
 A small CLI app `icnsify` is provided allowing you to create icns files using this library from the command line. It supports piping, which is something `iconutil` does not do, making it substantially easier to wrap or chuck into a shell pipeline.
 
-Note: `icns` files are written with an icon at every size macOS draws, the retina OSTypes for the larger ones and the colour and mask pair Apple still uses at 16 and 32 pixels. Decoding reaches further back than writing does. Alongside PNG it understands the `is32`, `il32`, `ih32` and `it32` colour and mask elements, the `ARGB` sidebar and toolbar icons, and the 1-, 4- and 8-bit indexed icons of System 7 through Mac OS 8. Where a file holds the same icon at several depths, the richest is returned first. JPEG 2000 icons are identified but not decoded; `Entry.Payload` hands over their bytes.
+Note: `icns` files are written with an icon at every size macOS draws, the retina OSTypes for the larger ones and the colour and mask pair Apple still uses at 16 and 32 pixels. Decoding reaches further back than writing does. Alongside PNG it understands the `is32`, `il32`, `ih32` and `it32` colour and mask elements, the `ARGB` sidebar and toolbar icons, and the 1-, 4- and 8-bit indexed icons of System 7 through Mac OS 8. Where a file holds the same icon at several depths, the richest is returned first.
+
+Elements that hold a whole image file are passed to `image.Decode`, so they read in whatever formats the program has registered. That is how a JPEG 2000 icon is handled: import a decoder for it and those icons start decoding, while a program that does not carries no codec and skips past them to a size it can read.
 
 ## GUI
 
@@ -162,7 +164,7 @@ for _, icon := range d.Icons() { // Largest first.
 }
 ```
 
-`Entry.Payload` returns the bytes the file stores, which is how to reach a JPEG 2000 icon: this package identifies that format but cannot decode it.
+`Entry.Payload` returns the bytes the file stores, for handling an element yourself.
 
 ## Development
 

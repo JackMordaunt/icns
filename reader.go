@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"image"
 	"io"
@@ -54,11 +55,11 @@ type Entry struct {
 	mask []byte
 }
 
-// Decode decodes the icon's pixels.
+// Decode decodes the icon's pixels. The formats icns defines itself are
+// decoded here; an element holding a whole image file is passed to
+// image.Decode, so it is read by whatever the program has registered.
 func (e Entry) Decode() (image.Image, error) {
 	switch e.ImageFormat {
-	case ImageFormatJPEG2000:
-		return nil, fmt.Errorf("%w: icon %s is %s", ErrUnsupportedFormat, e.OsType, e.ImageFormat)
 	case ImageFormatRGB:
 		data := e.data
 		// it32 is the one colour element that prefixes its planes with four
@@ -85,6 +86,9 @@ func (e Entry) Decode() (image.Image, error) {
 		return img, nil
 	default:
 		img, _, err := image.Decode(bytes.NewReader(e.data))
+		if errors.Is(err, image.ErrFormat) {
+			return nil, fmt.Errorf("%w: icon %s is %s, which no registered decoder reads", ErrUnsupportedFormat, e.OsType, e.ImageFormat)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("decoding icon %s %s: %w", e.OsType, e.ImageFormat, err)
 		}
@@ -141,53 +145,53 @@ func (e Entry) colours() int {
 	}
 }
 
-// Payload returns the bytes the file stores for the icon, which lets a caller
-// handle a format this package cannot. For PNG and JPEG 2000 icons it is a
-// complete image file; for the colour and mask types it is the run-length
-// encoded colour planes, without the mask that holds their alpha.
+// Payload returns the bytes the file stores for the icon. For PNG and JPEG
+// 2000 icons it is a complete image file; for the colour and mask types it is
+// the run-length encoded colour planes, without the mask that holds their
+// alpha.
 //
 // The bytes are not copied, and must not be modified.
 func (e Entry) Payload() []byte {
 	return e.data
 }
 
-// Decode returns the largest decodable icon in the icns file, ignoring all
-// other sizes. JPEG 2000 icons are skipped due to lack of image decoding
-// support, so the result may be smaller than the largest icon present.
+// Decode returns the largest icon in the icns file that can be decoded,
+// ignoring all other sizes. An icon in a format no registered decoder reads
+// is passed over, so the result may be smaller than the largest present.
 func Decode(r io.Reader) (image.Image, error) {
 	d, err := NewDecoder(r)
 	if err != nil {
 		return nil, err
 	}
 	for _, icon := range d.entries {
-		if icon.ImageFormat == ImageFormatJPEG2000 {
+		img, err := icon.Decode()
+		if errors.Is(err, ErrUnsupportedFormat) {
 			continue
 		}
-		return icon.Decode()
+		return img, err
 	}
-	return nil, fmt.Errorf("%w: only %s icons present", ErrUnsupportedFormat, ImageFormatJPEG2000)
+	return nil, fmt.Errorf("%w: no icon is in a format a registered decoder reads", ErrUnsupportedFormat)
 }
 
-// DecodeAll extracts every icon resolution present in the icns data that this
-// package can decode. JPEG 2000 is ignored due to lack of image decoding
-// support.
+// DecodeAll extracts every icon resolution present in the icns data that can
+// be decoded. An icon in a format no registered decoder reads is ignored.
 func DecodeAll(r io.Reader) (images []image.Image, err error) {
 	d, err := NewDecoder(r)
 	if err != nil {
 		return nil, err
 	}
 	for _, icon := range d.entries {
-		if icon.ImageFormat == ImageFormatJPEG2000 {
+		img, err := icon.Decode()
+		if errors.Is(err, ErrUnsupportedFormat) {
 			continue
 		}
-		img, err := icon.Decode()
 		if err != nil {
 			return nil, err
 		}
 		images = append(images, img)
 	}
 	if len(images) == 0 {
-		return nil, fmt.Errorf("%w: only %s icons present", ErrUnsupportedFormat, ImageFormatJPEG2000)
+		return nil, fmt.Errorf("%w: no icon is in a format a registered decoder reads", ErrUnsupportedFormat)
 	}
 	// An element may hold an image of a size other than the one its type
 	// names, so order by what was actually decoded.
