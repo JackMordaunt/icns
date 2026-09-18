@@ -9,7 +9,7 @@ import (
 	"slices"
 	"sync"
 
-	"golang.org/x/image/draw"
+	"github.com/jackmordaunt/icns/v4/internal/resample"
 )
 
 // Encoder encodes ICNS files from a source image.
@@ -95,7 +95,7 @@ func NewIconSetFrom(images map[Slot]image.Image, interp InterpolationFunction) (
 	// The largest artwork stands in for the slots left empty. Ties are broken
 	// by slot so the choice does not depend on map ordering.
 	slices.SortFunc(slots, func(a, b Slot) int {
-		if order := cmp.Compare(biggestSide(images[b]), biggestSide(images[a])); order != 0 {
+		if order := cmp.Compare(resample.BiggestSide(images[b]), resample.BiggestSide(images[a])); order != 0 {
 			return order
 		}
 		if order := cmp.Compare(b.Points, a.Points); order != 0 {
@@ -131,7 +131,7 @@ func newIconSet(images map[Slot]image.Image, source image.Image, interp Interpol
 			}
 			icons[i] = &Icon{
 				Type:  osType,
-				Image: resizeSquare(art, osType.Size, interp),
+				Image: resample.Square(art, osType.Size, interp),
 			}
 		}()
 	}
@@ -140,21 +140,6 @@ func newIconSet(images map[Slot]image.Image, source image.Image, interp Interpol
 		Icons: icons,
 	}
 	return iconSet, nil
-}
-
-// resizeSquare scales img into a size by size square, ignoring the source
-// aspect ratio. An image already that size is returned as it is.
-//
-// Scaling happens in alpha-premultiplied space, so colour does not bleed out
-// of fully transparent pixels into the icon's edges.
-func resizeSquare(img image.Image, size uint, interp InterpolationFunction) image.Image {
-	bounds := img.Bounds()
-	if bounds.Dx() == int(size) && bounds.Dy() == int(size) {
-		return img
-	}
-	dst := image.NewRGBA(image.Rect(0, 0, int(size), int(size)))
-	interp.scaler().Scale(dst, dst.Bounds(), img, bounds, draw.Src, nil)
-	return dst
 }
 
 var sizes = []uint{
@@ -169,19 +154,13 @@ var sizes = []uint{
 
 // findNearestSize finds the biggest icon size we can use for this image.
 func findNearestSize(img image.Image) uint {
-	size := biggestSide(img)
+	size := resample.BiggestSide(img)
 	for _, s := range sizes {
 		if size >= s {
 			return s
 		}
 	}
 	return 0
-}
-
-// biggestSide returns the larger of img's two dimensions.
-func biggestSide(img image.Image) uint {
-	b := img.Bounds()
-	return uint(max(b.Dx(), b.Dy(), 0))
 }
 
 // sizesFrom returns a slice containing the sizes less than and including max.

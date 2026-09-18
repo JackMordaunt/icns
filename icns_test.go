@@ -11,6 +11,8 @@ import (
 	"io"
 	"reflect"
 	"testing"
+
+	"github.com/jackmordaunt/icns/v4/internal/resample"
 )
 
 // TestDecode relies on Encode being correct.
@@ -191,7 +193,7 @@ func TestResizeKeepsColorOutOfTransparentPixels(t *testing.T) {
 	}
 	// Bilinear has no negative lobes, so every output pixel is a plain
 	// average of its neighbours and the expected values are exact.
-	got := resizeSquare(src, 32, Bilinear)
+	got := resample.Square(src, 32, Bilinear)
 	var blended int
 	for y := got.Bounds().Min.Y; y < got.Bounds().Max.Y; y++ {
 		for x := got.Bounds().Min.X; x < got.Bounds().Max.X; x++ {
@@ -389,7 +391,7 @@ func TestBiggestSide(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(st *testing.T) {
-			got := biggestSide(tt.img)
+			got := resample.BiggestSide(tt.img)
 			if got != tt.want {
 				st.Errorf("want=%d, got=%d", tt.want, got)
 			}
