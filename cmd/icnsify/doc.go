@@ -6,8 +6,28 @@ import (
 	"strconv"
 )
 
-// version is stamped by goreleaser at build time.
-var version = "master"
+// Stamped by goreleaser at build time, through the linker.
+var (
+	version = "master"
+	commit  = ""
+	date    = ""
+	builtBy = ""
+)
+
+// buildInfo renders the version and whatever else the build stamped.
+func buildInfo() string {
+	out := "icnsify " + version
+	for _, part := range []struct{ label, value string }{
+		{"commit", commit},
+		{"built", date},
+		{"by", builtBy},
+	} {
+		if part.value != "" {
+			out += fmt.Sprintf(", %s %s", part.label, part.value)
+		}
+	}
+	return out
+}
 
 // option records a flag registered under both a long and a short name, so
 // usage can list the pair once, GNU style.
@@ -32,9 +52,16 @@ func intFlag(p *int, long, short string, def int, usage string) {
 	options = append(options, option{long: long, short: short, def: strconv.Itoa(def), usage: usage})
 }
 
+// boolFlag registers a boolean option reachable as --long or -short.
+func boolFlag(p *bool, long, short string, usage string) {
+	flag.BoolVar(p, long, false, usage)
+	flag.BoolVar(p, short, false, usage)
+	options = append(options, option{long: long, short: short, usage: usage})
+}
+
 func usage() {
 	w := flag.CommandLine.Output()
-	fmt.Fprintf(w, "icnsify %s\n\nUsage: icnsify [-i input] [-o output] [-r quality]\n\nOptions:\n", version)
+	fmt.Fprintf(w, "%s\n\nUsage: icnsify [-i input] [-o output] [-r quality]\n\nOptions:\n", buildInfo())
 	for _, o := range options {
 		fmt.Fprintf(w, "  -%s, --%s\n        %s", o.short, o.long, o.usage)
 		if o.def != "" && o.def != "0" {
