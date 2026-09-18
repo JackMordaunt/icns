@@ -166,6 +166,22 @@ for _, icon := range d.Icons() { // Largest first.
 
 `Entry.Payload` returns the bytes the file stores, for handling an element yourself.
 
+## Windows icons
+
+`ico` is a sibling package for the Windows `.ico` format, with the same shape as the icns API, so one mental model covers both.
+
+```go
+import "github.com/jackmordaunt/icns/v4/ico"
+
+if err := ico.Encode(dest, srcImg); err != nil {
+        log.Fatalf("encoding ico: %v", err)
+}
+```
+
+A file is written with an icon at 256, 128, 64, 48, 32, 24 and 16 pixels, skipping any larger than the source. The 256 is a PNG, since a bitmap at that size is a quarter of a megabyte on its own; the rest are 32-bit bitmaps with the one-bit mask Windows still reads. `NewEncoder(dest).EncodeSizes(images)` takes a drawing per size, as `EncodeSlots` does for icns.
+
+Decoding reads PNG icons and bitmaps at 1, 4, 8, 24 and 32 bits per pixel, taking the colour table from the file and the alpha from the mask where the pixels carry none. `NewDecoder`, `Icons`, `Entry.Decode` and `Entry.Payload` work as their icns counterparts do, and the package registers itself with `image.Decode`.
+
 ## Development
 
 The repository is a Go workspace of three modules:
@@ -202,6 +218,7 @@ $env:GOWORK = 'off'; go get github.com/jackmordaunt/icns/v4@latest; go mod tidy;
 - [x] Implement Decoder: `.icns -> image.Image`
 - [x] Symmetric test: `decode(encode(img)) == img`
 - [x] Windows Explorer thumbnails
+- [x] Windows `.ico` encoder and decoder
 
 ## Coffee
 
