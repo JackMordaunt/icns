@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
   schedule:
     # Weekly, so new advisories surface without waiting for a commit.
     - cron: "0 6 * * 1"
@@ -61,6 +62,19 @@ jobs:
         with:
           name: fuzz-corpus
           path: testdata/fuzz
+
+  oracle:
+    name: iconutil oracle
+    # Apple's own tool is the only authority on the format, and it ships with
+    # the macOS runner. The tests are darwin-only, so this is where they run.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - run: go test -count=1 -v -run 'TestIconutil' .
 
   shell-extension:
     name: shell extension
