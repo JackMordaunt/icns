@@ -98,6 +98,10 @@ Standard
 
 `icnsify -i icon.icns -o icon.png`
 
+From an iconset directory, which uses each drawing where it is given instead of resizing one image for every size
+
+`icnsify -i MyIcon.iconset -o MyIcon.icns`
+
 ## Library
 
 `go get github.com/jackmordaunt/icns/v4`
@@ -123,6 +127,42 @@ func main() {
         }
 }
 ```
+
+### Per-size artwork
+
+Icons are usually hand tuned at the small sizes rather than reduced from the large one. `EncodeSlots` takes a drawing per slot and resizes only the slots left empty, filling them from the largest image given.
+
+```go
+images := map[icns.Slot]image.Image{
+        {Points: 16, Scale: 1}:  small, // icon_16x16.png
+        {Points: 512, Scale: 2}: large, // icon_512x512@2x.png
+}
+if err := icns.NewEncoder(dest).EncodeSlots(images); err != nil {
+        log.Fatalf("encoding icns: %v", err)
+}
+```
+
+A slot is a size and a display scale, because 16x16@2x and 32x32 are both 32 pixels of artwork but fill different elements. `icns.Slots()` lists the ten a file holds and `icns.ParseSlot` reads iconset file names.
+
+### Reading one size
+
+`NewDecoder` identifies the icons without decoding any of them, so reading a single size does not pay for the rest.
+
+```go
+d, err := icns.NewDecoder(src)
+if err != nil {
+        log.Fatalf("reading icns: %v", err)
+}
+for _, icon := range d.Icons() { // Largest first.
+        if icon.Size > 128 {
+                continue
+        }
+        img, err := icon.Decode()
+        ...
+}
+```
+
+`Entry.Payload` returns the bytes the file stores, which is how to reach a JPEG 2000 icon: this package identifies that format but cannot decode it.
 
 ## Development
 
