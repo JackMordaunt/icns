@@ -6,9 +6,7 @@ import (
 )
 
 // stdinIsPipe reports whether stdin is a pipe or redirected file rather than
-// an interactive terminal. It deliberately ignores the stream's current size:
-// a producer such as `cat icon.png | icnsify` may not have written anything
-// by the time we look, and a zero size would wrongly read as "no input".
+// an interactive terminal.
 func stdinIsPipe() (bool, error) {
 	info, err := os.Stdin.Stat()
 	if err != nil {

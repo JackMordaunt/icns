@@ -9,8 +9,8 @@ import (
 // version is stamped by goreleaser at build time.
 var version = "master"
 
-// option records a flag registered under a long and a short name so usage
-// can list each one once, GNU style, instead of twice as PrintDefaults would.
+// option records a flag registered under both a long and a short name, so
+// usage can list the pair once, GNU style.
 type option struct {
 	long, short string
 	def, usage  string
