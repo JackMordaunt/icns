@@ -7,10 +7,6 @@ import (
 )
 
 // InterpolationFunction is the algorithm used to resize the image.
-//
-// It is an enumeration of this package's own rather than an alias for the
-// resampling library's type, so the resampler can be replaced without
-// breaking callers.
 type InterpolationFunction int
 
 // InterpolationFunction constants, ordered from fastest to highest quality.

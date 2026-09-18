@@ -94,12 +94,10 @@ func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error)
 }
 
 // resizeSquare scales img into a size by size square, ignoring the source
-// aspect ratio. An image already at that size is passed through untouched,
-// which keeps the largest icon identical to the source and skips the most
-// expensive resample in the common case.
+// aspect ratio. An image already that size is returned as it is.
 //
-// Scaling happens in alpha-premultiplied space, which is what keeps colour
-// from bleeding out of fully transparent pixels into the icon's edges.
+// Scaling happens in alpha-premultiplied space, so colour does not bleed out
+// of fully transparent pixels into the icon's edges.
 func resizeSquare(img image.Image, size uint, scaler draw.Interpolator) image.Image {
 	bounds := img.Bounds()
 	if bounds.Dx() == int(size) && bounds.Dy() == int(size) {
@@ -140,8 +138,7 @@ func findNearestSize(img image.Image) uint {
 	return 0
 }
 
-// biggestSide returns the larger dimension of img. Bounds need not start at
-// the origin, so measure the rectangle rather than its far corner.
+// biggestSide returns the larger of img's two dimensions.
 func biggestSide(img image.Image) uint {
 	b := img.Bounds()
 	return uint(max(b.Dx(), b.Dy(), 0))

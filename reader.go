@@ -87,8 +87,8 @@ const elementHeaderSize = 8
 // An icns file is a sequence of elements, each a 4-byte type followed by a
 // 4-byte big-endian length that counts the whole element, header included.
 // The file itself is one such element of type "icns" enclosing the rest.
-// Every length is validated against the data actually present so malformed
-// or truncated input yields an error rather than a panic or an endless loop.
+// Every length is checked against the data present, and input that disagrees
+// is reported as ErrMalformed.
 func decode(r io.Reader) (icons []iconReader, err error) {
 	data, err := io.ReadAll(r)
 	if err != nil {

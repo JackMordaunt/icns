@@ -226,8 +226,7 @@ func Thumbnail(r io.Reader, cx int) (*image.RGBA, error) {
 	if w == b.Dx() && h == b.Dy() {
 		draw.Draw(rgba, rgba.Bounds(), chosen, b.Min, draw.Src)
 	} else {
-		// CatmullRom is x/image's high quality kernel, and rings less on the
-		// hard edges typical of icons than a wider Lanczos window.
+		// CatmullRom is x/image's high quality kernel.
 		draw.CatmullRom.Scale(rgba, rgba.Bounds(), chosen, b, draw.Src, nil)
 	}
 	return rgba, nil
