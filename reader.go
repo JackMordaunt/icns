@@ -10,7 +10,10 @@ import (
 	"slices"
 )
 
-var jpeg2000header = []byte{0x00, 0x00, 0x00, 0x0c, 0x6a, 0x50, 0x20, 0x20}
+var (
+	jpeg2000header = []byte{0x00, 0x00, 0x00, 0x0c, 0x6a, 0x50, 0x20, 0x20}
+	argbHeader     = []byte("ARGB")
+)
 
 // Decoder reads an icns file and decodes its icons on demand, so a caller
 // after one size does not pay for the rest.
@@ -60,6 +63,12 @@ func (e Entry) Decode() (image.Image, error) {
 			data = data[4:]
 		}
 		img, err := decodeRGB(data, e.mask, int(e.Size))
+		if err != nil {
+			return nil, fmt.Errorf("decoding icon %s %s: %w", e.OsType, e.ImageFormat, err)
+		}
+		return img, nil
+	case ImageFormatARGB:
+		img, err := decodeARGB(e.data[len(argbHeader):], int(e.Size))
 		if err != nil {
 			return nil, fmt.Errorf("decoding icon %s %s: %w", e.OsType, e.ImageFormat, err)
 		}
@@ -182,14 +191,16 @@ func decode(r io.Reader) (icons []Entry, err error) {
 			IconDescription: IconDescription{OsType: osType},
 			data:            el.payload,
 		}
-		switch osType.enc {
-		case encodingRGB:
+		// Several types carry more than one format, so the payload decides
+		// wherever it says what it holds.
+		switch {
+		case osType.enc == encodingRGB:
 			icon.ImageFormat = ImageFormatRGB
 			icon.mask = payloads[osType.mask]
-		default:
-			if bytes.HasPrefix(el.payload, jpeg2000header) {
-				icon.ImageFormat = ImageFormatJPEG2000
-			}
+		case bytes.HasPrefix(el.payload, argbHeader):
+			icon.ImageFormat = ImageFormatARGB
+		case bytes.HasPrefix(el.payload, jpeg2000header):
+			icon.ImageFormat = ImageFormatJPEG2000
 		}
 		icons = append(icons, icon)
 	}

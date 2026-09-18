@@ -213,6 +213,9 @@ const (
 	// ImageFormatRGB is 24-bit colour in run-length encoded channel planes,
 	// with alpha held in a separate mask element.
 	ImageFormatRGB
+	// ImageFormatARGB is run-length encoded channel planes that carry their
+	// own alpha, behind an "ARGB" header.
+	ImageFormatARGB
 )
 
 func (f ImageFormat) String() string {
@@ -223,6 +226,8 @@ func (f ImageFormat) String() string {
 		return "JPEG 2000"
 	case ImageFormatRGB:
 		return "24-bit RGB"
+	case ImageFormatARGB:
+		return "ARGB"
 	}
 	return fmt.Sprintf("unknown format %d", f)
 }
@@ -271,6 +276,14 @@ var osTypes = []OsType{
 	{ID: "icp6", Size: 48},
 	{ID: "icp5", Size: 32},
 	{ID: "icp4", Size: 16},
+
+	// Toolbar and sidebar icons, which hold ARGB or PNG.
+	{ID: "SB24", Size: 48},
+	{ID: "icsB", Size: 36},
+	{ID: "ic05", Size: 32},
+	{ID: "sb24", Size: 24},
+	{ID: "icsb", Size: 18},
+	{ID: "ic04", Size: 16},
 
 	// The small sizes are written as colour and mask rather than PNG, which
 	// is what Apple still emits for them: icp4 and icp5 hold PNG but do not
