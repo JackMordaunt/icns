@@ -61,7 +61,7 @@ func boolFlag(p *bool, long, short string, usage string) {
 
 func usage() {
 	w := flag.CommandLine.Output()
-	fmt.Fprintf(w, "%s\n\nUsage: icnsify [-i input] [-o output] [-r quality]\n\nOptions:\n", buildInfo())
+	fmt.Fprintf(w, "%s\n\nUsage: icnsify [-i input] [-o output] [-f format] [-r quality]\n\nOptions:\n", buildInfo())
 	for _, o := range options {
 		fmt.Fprintf(w, "  -%s, --%s\n        %s", o.short, o.long, o.usage)
 		if o.def != "" && o.def != "0" {
@@ -75,5 +75,6 @@ when --input is not given, and --output is then ignored.
 
         cat icon.png | icnsify > icon.icns
         cat icon.icns | icnsify > icon.png
+        cat icon.png | icnsify -f ico > icon.ico
 `)
 }

@@ -100,9 +100,21 @@ Standard
 
 `icnsify -i icon.icns -o icon.png`
 
+Windows icons, which the output path names, or `--format` where there is no path to name them
+
+`icnsify -i icon.png -o icon.ico`
+
+`cat icon.png | icnsify -f ico > icon.ico`
+
+Between the two icon formats, in either direction
+
+`icnsify -i icon.icns -o icon.ico`
+
 From an iconset directory, which uses each drawing where it is given instead of resizing one image for every size
 
 `icnsify -i MyIcon.iconset -o MyIcon.icns`
+
+`icnsify -i MyIcon.iconset -o MyIcon.ico`
 
 ## Library
 
@@ -181,6 +193,8 @@ if err := ico.Encode(dest, srcImg); err != nil {
 A file is written with an icon at 256, 128, 64, 48, 32, 24 and 16 pixels, skipping any larger than the source. The 256 is a PNG, since a bitmap at that size is a quarter of a megabyte on its own; the rest are 32-bit bitmaps with the one-bit mask Windows still reads. `NewEncoder(dest).EncodeSizes(images)` takes a drawing per size, as `EncodeSlots` does for icns.
 
 Decoding reads PNG icons and bitmaps at 1, 4, 8, 24 and 32 bits per pixel, taking the colour table from the file and the alpha from the mask where the pixels carry none. `NewDecoder`, `Icons`, `Entry.Decode` and `Entry.Payload` work as their icns counterparts do, and the package registers itself with `image.Decode`.
+
+`icnsify` writes `.ico` too, so the format is reachable from the command line without writing a program.
 
 ## Development
 

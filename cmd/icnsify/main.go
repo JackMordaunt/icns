@@ -15,7 +15,12 @@ import (
 	"strings"
 
 	"github.com/jackmordaunt/icns/v4"
+	"github.com/jackmordaunt/icns/v4/ico"
 )
+
+// containers are the formats that hold an icon at several sizes, as opposed
+// to the plain images they are built from and unpacked into.
+var containers = map[string]bool{".icns": true, ".ico": true}
 
 // errUsage signals that no work was requested; usage has been printed.
 var errUsage = errors.New("usage")
@@ -31,14 +36,17 @@ func main() {
 
 func run() error {
 	var (
-		inputPath  string
-		outputPath string
-		resize     int
+		inputPath    string
+		outputPath   string
+		outputFormat string
+		resize       int
 	)
 	stringFlag(&inputPath, "input", "i", "",
-		"Input image for conversion to icns from jpg|png or vice versa.")
+		"Input image: artwork to pack, an icon file to unpack, or an iconset directory.")
 	stringFlag(&outputPath, "output", "o", "",
-		"Output path, defaults to <path/to/image>.(icns|png) depending on input.")
+		"Output path, defaults to the input named with the target's extension.")
+	stringFlag(&outputFormat, "format", "f", "",
+		"Output format: icns, ico, png or jpg. Defaults from the output path.")
 	intFlag(&resize, "resize", "r", 5,
 		"Quality of resize algorithm, 0 to 5 from fastest to slowest.")
 	var showVersion bool
@@ -64,7 +72,10 @@ func run() error {
 			return err
 		}
 	}
-	in, out, algorithm := sanitiseInputs(inputPath, outputPath, resize)
+	if outputFormat != "" && !writable(extension(outputFormat)) {
+		return fmt.Errorf("cannot write %s: choose from icns, ico, png or jpg", outputFormat)
+	}
+	in, out, algorithm := sanitiseInputs(inputPath, outputPath, outputFormat, resize)
 	if piping {
 		input, output = os.Stdin, os.Stdout
 	} else {
@@ -75,7 +86,7 @@ func run() error {
 		// A directory is an iconset: artwork per slot rather than one image
 		// to resize for every size.
 		if info, err := os.Stat(in); err == nil && info.IsDir() {
-			return encodeIconSet(in, out, algorithm)
+			return encodeIconSet(in, out, target(outputFormat, out, false, ""), algorithm)
 		}
 		sourcef, err := os.Open(in)
 		if err != nil {
@@ -93,17 +104,13 @@ func run() error {
 		defer outputf.Close()
 		output = outputf
 	}
-	if filepath.Ext(in) == ".icns" {
+	if containers[extension(filepath.Ext(in))] {
 		by, err := io.ReadAll(input)
 		if err != nil {
 			return fmt.Errorf("probing file: reading file: %w", err)
 		}
-		icons, err := icns.Probe(bytes.NewReader(by))
-		if err != nil {
+		if err := describe(extension(filepath.Ext(in)), bytes.NewReader(by)); err != nil {
 			return fmt.Errorf("probing file: %w", err)
-		}
-		for _, icon := range icons {
-			slog.Info("found", "icon", icon)
 		}
 		input = bytes.NewReader(by)
 	}
@@ -111,43 +118,91 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("decoding input: %w", err)
 	}
-	if format == "icns" {
-		imageType := strings.ToLower(filepath.Ext(out))
-		if _, ok := encoders[imageType]; !ok {
-			imageType = ".png"
+	switch kind := target(outputFormat, out, piping, format); kind {
+	case ".icns":
+		if err := icns.NewEncoder(output).WithAlgorithm(algorithm).Encode(img); err != nil {
+			return fmt.Errorf("encoding icns: %w", err)
 		}
-		if err := encoders[imageType](output, img); err != nil {
-			return fmt.Errorf("encoding %s: %w", imageType, err)
+	case ".ico":
+		if err := ico.NewEncoder(output).WithAlgorithm(algorithm).Encode(img); err != nil {
+			return fmt.Errorf("encoding ico: %w", err)
 		}
-		return nil
-	}
-	enc := icns.NewEncoder(output).WithAlgorithm(algorithm)
-	if err := enc.Encode(img); err != nil {
-		return fmt.Errorf("encoding icns: %w", err)
+	default:
+		if err := encoders[kind](output, img); err != nil {
+			return fmt.Errorf("encoding %s: %w", kind, err)
+		}
 	}
 	return nil
+}
+
+// describe logs the icons a container holds.
+func describe(ext string, r io.Reader) error {
+	switch ext {
+	case ".ico":
+		d, err := ico.NewDecoder(r)
+		if err != nil {
+			return err
+		}
+		for _, icon := range d.Icons() {
+			slog.Info("found", "icon", icon)
+		}
+	default:
+		icons, err := icns.Probe(r)
+		if err != nil {
+			return err
+		}
+		for _, icon := range icons {
+			slog.Info("found", "icon", icon)
+		}
+	}
+	return nil
+}
+
+// target names the format to write. The --format flag decides it, then the
+// output path, and failing both the conversion changes kind, since that is
+// what converting an icon usually means: artwork becomes a container of
+// icons and a container becomes a plain image. A pipe has no output path.
+func target(want, out string, piping bool, got string) string {
+	if want != "" {
+		return extension(want)
+	}
+	if !piping {
+		if ext := extension(filepath.Ext(out)); writable(ext) {
+			return ext
+		}
+	}
+	if containers[extension(got)] {
+		return ".png"
+	}
+	return ".icns"
+}
+
+// extension normalises a format name or extension to a lower case extension.
+func extension(name string) string {
+	name = strings.ToLower(name)
+	if name != "" && !strings.HasPrefix(name, ".") {
+		name = "." + name
+	}
+	return name
+}
+
+// writable reports whether this program can write the format.
+func writable(ext string) bool {
+	return containers[ext] || encoders[ext] != nil
 }
 
 func sanitiseInputs(
 	inputPath string,
 	outputPath string,
+	outputFormat string,
 	resize int,
 ) (string, string, icns.InterpolationFunction) {
-	if filepath.Ext(inputPath) == ".icns" {
-		if outputPath == "" {
-			outputPath = changeExtensionTo(inputPath, "png")
-		}
-		if filepath.Ext(outputPath) == "" {
-			outputPath += ".png"
-		}
+	ext := target(outputFormat, outputPath, false, extension(filepath.Ext(inputPath)))
+	if outputPath == "" {
+		outputPath = changeExtensionTo(inputPath, ext)
 	}
-	if filepath.Ext(inputPath) != ".icns" {
-		if outputPath == "" {
-			outputPath = changeExtensionTo(inputPath, "icns")
-		}
-		if filepath.Ext(outputPath) == "" {
-			outputPath += ".icns"
-		}
+	if filepath.Ext(outputPath) == "" {
+		outputPath += ext
 	}
 	if resize < 0 {
 		resize = 0
