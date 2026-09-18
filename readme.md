@@ -127,7 +127,7 @@ The repository is a Go workspace of three modules:
 
 | Module | Contents | Why separate |
 |---|---|---|
-| `github.com/jackmordaunt/icns/v4` (root) | The library and `cmd/icnsify` | Dependency-free apart from `nfnt/resize`; one tag versions both |
+| `github.com/jackmordaunt/icns/v4` (root) | The library and `cmd/icnsify` | Depends only on `golang.org/x/image`; one tag versions both |
 | `github.com/jackmordaunt/icns/cmd/preview` | The Gio GUI | Keeps Gio's dependency tree out of library consumers' module graphs |
 | `github.com/jackmordaunt/icns/cmd/shell-extension` | The Windows DLL | Windows-only and needs cgo (mingw) |
 

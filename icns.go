@@ -7,7 +7,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/nfnt/resize"
+	"golang.org/x/image/draw"
 )
 
 // Encoder encodes ICNS files from a source image.
@@ -65,6 +65,7 @@ func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error)
 		return nil, ErrImageTooSmall{image: img, need: 16}
 	}
 	icons := make([]*Icon, len(osTypes))
+	scaler := interp.scaler()
 	work := sync.WaitGroup{}
 	var iconIdx int
 	for _, size := range sizesFrom(biggest) {
@@ -78,7 +79,7 @@ func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error)
 			go func(iconIdx int, osType OsType, size uint) {
 				icons[iconIdx] = &Icon{
 					Type:  osType,
-					Image: resizeSquare(img, size, interp),
+					Image: resizeSquare(img, size, scaler),
 				}
 				work.Done()
 			}(iconIdx, osType, size)
@@ -96,12 +97,17 @@ func NewIconSet(img image.Image, interp InterpolationFunction) (*IconSet, error)
 // aspect ratio. An image already at that size is passed through untouched,
 // which keeps the largest icon identical to the source and skips the most
 // expensive resample in the common case.
-func resizeSquare(img image.Image, size uint, interp InterpolationFunction) image.Image {
+//
+// Scaling happens in alpha-premultiplied space, which is what keeps colour
+// from bleeding out of fully transparent pixels into the icon's edges.
+func resizeSquare(img image.Image, size uint, scaler draw.Interpolator) image.Image {
 	bounds := img.Bounds()
 	if bounds.Dx() == int(size) && bounds.Dy() == int(size) {
 		return img
 	}
-	return resize.Resize(size, size, img, interp)
+	dst := image.NewRGBA(image.Rect(0, 0, int(size), int(size)))
+	scaler.Scale(dst, dst.Bounds(), img, bounds, draw.Src, nil)
+	return dst
 }
 
 // Big-endian.
