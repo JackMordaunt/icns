@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly, so new advisories surface without waiting for a commit.
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  library:
+    name: library (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      # go-version-file reads the go directive, so CI proves the declared
+      # minimum actually builds rather than whatever is newest.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            cmd/preview/go.sum
+            cmd/shell-extension/go.sum
+      - run: go build ./...
+      - run: go test -count=1 ./...
+
+  race:
+    name: library under the race detector
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      # The encoder resizes every icon concurrently.
+      - run: go test -count=1 -race ./...
+
+  fuzz:
+    name: decoder fuzzing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - run: go test -run='^$' -fuzz=FuzzDecode -fuzztime=120s .
+      - name: Keep any crasher for download
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-corpus
+          path: testdata/fuzz
+
+  shell-extension:
+    name: shell extension
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: cmd/shell-extension
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cmd/shell-extension/go.mod
+          cache-dependency-path: cmd/shell-extension/go.sum
+      # The DLL is built with -buildmode=c-shared, which needs cgo.
+      - run: gcc --version
+      - run: go test -count=1 ./...
+      # Outside the workspace the module resolves the published library, which
+      # is what `go install` gets; it catches a go.sum that never learned it.
+      - run: go build ./...
+        env:
+          GOWORK: "off"
+
+  preview:
+    name: preview (${{ matrix.os }})
+    # Gio needs a long list of X11 and Wayland headers on Linux, so the GUI is
+    # only built where its dependencies ship with the runner.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: cmd/preview
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cmd/preview/go.mod
+          cache-dependency-path: cmd/preview/go.sum
+      - run: go build ./...
+      - run: go build ./...
+        env:
+          GOWORK: "off"
+
+  checks:
+    name: formatting, vet and vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache-dependency-path: |
+            go.sum
+            cmd/preview/go.sum
+            cmd/shell-extension/go.sum
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "not gofmt clean:"
+            echo "$unformatted"
+            exit 1
+          fi
+      # ./... covers only the module holding the working directory, even in a
+      # workspace, so each module is named.
+      - run: go vet ./... ./cmd/preview/... ./cmd/shell-extension/...
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...

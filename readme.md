@@ -1,5 +1,8 @@
 # icns
 
+[![CI](https://github.com/JackMordaunt/icns/actions/workflows/ci.yml/badge.svg)](https://github.com/JackMordaunt/icns/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/jackmordaunt/icns/v4.svg)](https://pkg.go.dev/github.com/jackmordaunt/icns/v4)
+
 Easily convert `.jpg` and `.png` to `.icns` with the command line tool `icnsify`, or use the library to convert from any `image.Image` to `.icns`.
 
 `go get github.com/jackmordaunt/icns/v4`
@@ -138,6 +141,8 @@ go test ./... ./cmd/preview/... ./cmd/shell-extension/...
 ```
 
 The two command modules require the library at a published tag. Inside the workspace that requirement only shapes the module graph; the code always comes from the working tree, so the tag can lag behind without affecting development.
+
+CI builds and tests the library on Linux, macOS and Windows, runs the encoder under the race detector, fuzzes the decoder, and reports `gofmt`, `go vet` and `govulncheck`. The shell extension is tested on Windows, where cgo can reach a C compiler, and `preview` is built on macOS and Windows, since Gio needs a long list of X11 and Wayland headers on Linux. Both command modules are also built with `GOWORK=off`, which is what `go install` sees.
 
 Releasing: tag the root module (`vX.Y.Z`), which releases the library and `icnsify` together. When `go install .../cmd/preview@latest`, or a shell extension built outside the checkout, should pick up a newer library, bump that module's requirement and tidy it outside the workspace:
 
