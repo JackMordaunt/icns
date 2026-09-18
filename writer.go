@@ -13,39 +13,35 @@ type Icon struct {
 	Type  OsType
 	Image image.Image
 
-	header    [8]byte
-	headerSet bool
-	data      []byte
+	elements []element
 }
 
 // WriteTo encodes the icon into wr.
 func (i *Icon) WriteTo(wr io.Writer) (int64, error) {
+	if err := i.encode(); err != nil {
+		return 0, err
+	}
 	var written int64
-	if err := i.encodeImage(); err != nil {
-		return written, err
-	}
-	size, err := i.writeHeader(wr)
-	written += size
-	if err != nil {
-		return written, err
-	}
-	size, err = i.writeData(wr)
-	written += size
-	if err != nil {
-		return written, err
+	for _, el := range i.elements {
+		n, err := writeElement(wr, el)
+		written += n
+		if err != nil {
+			return written, err
+		}
 	}
 	return written, nil
 }
 
-func (i *Icon) encodeImage() error {
-	if len(i.data) > 0 {
+// encode builds the elements this icon occupies in the file.
+func (i *Icon) encode() error {
+	if len(i.elements) > 0 {
 		return nil
 	}
 	data, err := encodeImage(i.Image)
 	if err != nil {
 		return err
 	}
-	i.data = data
+	i.elements = []element{{id: i.Type.ID, payload: data}}
 	return nil
 }
 
@@ -57,47 +53,35 @@ func encodeImage(img image.Image) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (i *Icon) writeHeader(wr io.Writer) (int64, error) {
-	if !i.headerSet {
-		defer func() { i.headerSet = true }()
-		copy(i.header[:4], i.Type.ID)
-		binary.BigEndian.PutUint32(i.header[4:8], uint32(len(i.data)+elementHeaderSize))
+// writeElement writes one element: its 4-byte type, its length counting the
+// header, then its payload.
+func writeElement(wr io.Writer, el element) (int64, error) {
+	var header [elementHeaderSize]byte
+	copy(header[:4], el.id)
+	binary.BigEndian.PutUint32(header[4:], uint32(elementHeaderSize+len(el.payload)))
+	n, err := wr.Write(header[:])
+	written := int64(n)
+	if err != nil {
+		return written, err
 	}
-	written, err := wr.Write(i.header[:8])
-	return int64(written), err
-}
-
-func (i *Icon) writeData(wr io.Writer) (int64, error) {
-	written, err := wr.Write(i.data)
-	return int64(written), err
+	n, err = wr.Write(el.payload)
+	return written + int64(n), err
 }
 
 // IconSet encodes a set of icons into an ICNS file.
 type IconSet struct {
 	Icons []*Icon
 
-	header    [8]byte
-	headerSet bool
-	data      []byte
+	data []byte
 }
 
 // WriteTo writes the ICNS file to wr.
 func (s *IconSet) WriteTo(wr io.Writer) (int64, error) {
-	var written int64
 	if err := s.encodeIcons(); err != nil {
-		return written, err
+		return 0, err
 	}
-	size, err := s.writeHeader(wr)
-	written += size
-	if err != nil {
-		return written, err
-	}
-	size, err = s.writeData(wr)
-	written += size
-	if err != nil {
-		return written, err
-	}
-	return written, nil
+	// The file is itself an element enclosing all the others.
+	return writeElement(wr, element{id: "icns", payload: s.data})
 }
 
 func (s *IconSet) encodeIcons() error {
@@ -115,19 +99,4 @@ func (s *IconSet) encodeIcons() error {
 	}
 	s.data = buf.Bytes()
 	return nil
-}
-
-func (s *IconSet) writeHeader(wr io.Writer) (int64, error) {
-	if !s.headerSet {
-		defer func() { s.headerSet = true }()
-		copy(s.header[:4], "icns")
-		binary.BigEndian.PutUint32(s.header[4:8], uint32(len(s.data)+elementHeaderSize))
-	}
-	written, err := wr.Write(s.header[:8])
-	return int64(written), err
-}
-
-func (s *IconSet) writeData(wr io.Writer) (int64, error) {
-	written, err := wr.Write(s.data)
-	return int64(written), err
 }
