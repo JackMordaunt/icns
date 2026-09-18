@@ -2,6 +2,7 @@ package icns
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"image"
 	"image/color"
@@ -133,11 +134,26 @@ func TestEncodedElements(t *testing.T) {
 		got = append(got, el.id)
 	}
 	want := []string{
-		"ic10", "ic14", "ic09", "ic13", "ic08", "ic07", "ic12",
+		"TOC ", "ic10", "ic14", "ic09", "ic13", "ic08", "ic07", "ic12",
 		"ic11", "il32", "l8mk", "is32", "s8mk",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("elements = %v, want %v", got, want)
+	}
+	// The table of contents covers everything after it: type and total size.
+	toc := els[0].payload
+	if len(toc) != (len(els)-1)*elementHeaderSize {
+		t.Fatalf("table of contents is %d bytes, want %d", len(toc), (len(els)-1)*elementHeaderSize)
+	}
+	for i, el := range els[1:] {
+		entry := toc[i*elementHeaderSize:]
+		if id := string(entry[:4]); id != el.id {
+			t.Errorf("entry %d names %q, want %q", i, id, el.id)
+		}
+		size := binary.BigEndian.Uint32(entry[4:8])
+		if want := uint32(elementHeaderSize + len(el.payload)); size != want {
+			t.Errorf("entry %d for %s gives size %d, want %d", i, el.id, size, want)
+		}
 	}
 }
 

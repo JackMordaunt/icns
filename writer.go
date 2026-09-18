@@ -79,32 +79,44 @@ func writeElement(wr io.Writer, el element) (int64, error) {
 // IconSet encodes a set of icons into an ICNS file.
 type IconSet struct {
 	Icons []*Icon
-
-	data []byte
 }
 
 // WriteTo writes the ICNS file to wr.
 func (s *IconSet) WriteTo(wr io.Writer) (int64, error) {
-	if err := s.encodeIcons(); err != nil {
-		return 0, err
-	}
-	// The file is itself an element enclosing all the others.
-	return writeElement(wr, element{id: "icns", payload: s.data})
-}
-
-func (s *IconSet) encodeIcons() error {
-	if len(s.data) > 0 {
-		return nil
-	}
-	buf := bytes.NewBuffer(nil)
+	var elements []element
 	for _, icon := range s.Icons {
 		if icon == nil {
 			continue
 		}
-		if _, err := icon.WriteTo(buf); err != nil {
-			return err
+		if err := icon.encode(); err != nil {
+			return 0, err
+		}
+		elements = append(elements, icon.elements...)
+	}
+	body := bytes.NewBuffer(nil)
+	// The table of contents comes first and covers everything after it, so a
+	// reader can index the file without walking every element.
+	if _, err := writeElement(body, tableOfContents(elements)); err != nil {
+		return 0, err
+	}
+	for _, el := range elements {
+		if _, err := writeElement(body, el); err != nil {
+			return 0, err
 		}
 	}
-	s.data = buf.Bytes()
-	return nil
+	// The file is itself an element enclosing all the others.
+	return writeElement(wr, element{id: "icns", payload: body.Bytes()})
+}
+
+// tableOfContents lists each element's type and total size, in order.
+func tableOfContents(elements []element) element {
+	toc := element{
+		id:      "TOC ",
+		payload: make([]byte, 0, len(elements)*elementHeaderSize),
+	}
+	for _, el := range elements {
+		toc.payload = append(toc.payload, el.id...)
+		toc.payload = binary.BigEndian.AppendUint32(toc.payload, uint32(elementHeaderSize+len(el.payload)))
+	}
+	return toc
 }
