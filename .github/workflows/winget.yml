@@ -7,7 +7,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: vedantmgoyal2009/winget-releaser@v2
+      - uses: vedantmgoyal9/winget-releaser@v2
         with:
           identifier: JackMordaunt.icnsify
           installers-regex: '_windows_\w+\.zip$'
