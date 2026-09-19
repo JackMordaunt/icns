@@ -112,9 +112,11 @@ jobs:
       - run: gcc --version
       - run: go vet ./...
       - run: go test -count=1 ./...
-      # A build outside the workspace belongs here, to cover what `go install`
-      # gets, but the module uses library API newer than any published
-      # version. It can return once its requirement names a release with it.
+      # Outside the workspace the module resolves the published library, which
+      # is what `go install` gets; it catches a go.sum that never learned it.
+      - run: go build ./...
+        env:
+          GOWORK: "off"
 
   preview:
     name: preview (${{ matrix.os }})
