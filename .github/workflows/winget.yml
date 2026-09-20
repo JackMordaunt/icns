@@ -3,6 +3,10 @@ on:
   release:
     types: [released]
 
+# The action authenticates with a token of its own, so nothing here needs
+# the one GitHub injects.
+permissions: {}
+
 jobs:
   publish:
     runs-on: ubuntu-latest
