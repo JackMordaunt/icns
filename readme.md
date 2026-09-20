@@ -222,6 +222,26 @@ Decoding reads PNG icons and bitmaps at 1, 4, 8, 24 and 32 bits per pixel, takin
 
 `icnsify` writes `.ico` too, so the format is reachable from the command line without writing a program.
 
+## Icons inside binaries
+
+`exe` is a sibling package that reads the icons a Windows executable or DLL carries. They live in the resource section as a directory in one resource and its images in others, which is an ico file taken apart, so the package puts it back together.
+
+```go
+import "github.com/jackmordaunt/icns/v4/exe"
+
+groups, err := exe.Icons(binary) // An io.ReaderAt.
+if err != nil {
+        log.Fatalf("reading icons: %v", err)
+}
+for _, group := range groups { // Lowest ordinal first, as Explorer draws them.
+        os.WriteFile("icon.ico", group.ICO(), 0o644)
+}
+```
+
+The reassembly is exact: the ico handed to the linker comes back out of the binary byte for byte, which is what the package is tested against. `Group.Decode` returns the largest size as an image, and `exe.Decode` does the same for the first group.
+
+`icnsify` takes a binary wherever it takes an image, so `icnsify -i app.exe -f icns` converts the icon a program ships with, and `icnsify -c app.exe` checks what Explorer will draw for it.
+
 ## Development
 
 The repository is a Go workspace of three modules:
@@ -260,6 +280,7 @@ $env:GOWORK = 'off'; go get github.com/jackmordaunt/icns/v4@latest; go mod tidy;
 - [x] Windows Explorer thumbnails
 - [x] Windows `.ico` encoder and decoder
 - [x] Validation against what the platforms actually accept
+- [x] Reading icons out of Windows binaries
 
 ## Coffee
 
