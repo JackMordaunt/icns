@@ -170,6 +170,21 @@ func TestCheckRefusesABinaryWithoutIcons(t *testing.T) {
 	}
 }
 
+// TestWritableCoversEveryFormatTheUsageOffers keeps the usage text and what
+// the program will actually write from drifting apart.
+func TestWritableCoversEveryFormatTheUsageOffers(t *testing.T) {
+	for _, ext := range []string{".icns", ".icon", ".ico", ".png", ".jpg", ".jpeg"} {
+		if !writable(ext) {
+			t.Errorf("writable(%q) is false", ext)
+		}
+	}
+	for _, ext := range []string{".exe", ".dll", ".gif", ""} {
+		if writable(ext) {
+			t.Errorf("writable(%q) is true", ext)
+		}
+	}
+}
+
 func TestNameLabelsAPipe(t *testing.T) {
 	if got := name(""); got != "stdin" {
 		t.Errorf("name(\"\") = %q, want stdin", got)

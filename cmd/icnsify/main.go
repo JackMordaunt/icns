@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/jackmordaunt/icns/v4"
+	"github.com/jackmordaunt/icns/v4/appicon"
 	"github.com/jackmordaunt/icns/v4/exe"
 	"github.com/jackmordaunt/icns/v4/ico"
 )
@@ -26,6 +27,9 @@ var containers = map[string]bool{".icns": true, ".ico": true}
 // binaries are the Windows files that carry icons inside them rather than
 // being icons themselves.
 var binaries = map[string]bool{".exe": true, ".dll": true}
+
+// bundles are the formats written as a directory rather than as a file.
+var bundles = map[string]bool{".icon": true}
 
 // errUsage signals that no work was requested; usage has been printed.
 var errUsage = errors.New("usage")
@@ -51,7 +55,7 @@ func run() error {
 	stringFlag(&outputPath, "output", "o", "",
 		"Output path, defaults to the input named with the target's extension.")
 	stringFlag(&outputFormat, "format", "f", "",
-		"Output format: icns, ico, png or jpg. Defaults from the output path.")
+		"Output format: icns, icon, ico, png or jpg. Defaults from the output path.")
 	intFlag(&resize, "resize", "r", 5,
 		"Quality of resize algorithm, 0 to 5 from fastest to slowest.")
 	var checkOnly bool
@@ -98,7 +102,7 @@ func run() error {
 		return check(inputPath, source)
 	}
 	if outputFormat != "" && !writable(extension(outputFormat)) {
-		return fmt.Errorf("cannot write %s: choose from icns, ico, png or jpg", outputFormat)
+		return fmt.Errorf("cannot write %s: choose from icns, icon, ico, png or jpg", outputFormat)
 	}
 	in, out, algorithm := sanitiseInputs(inputPath, outputPath, outputFormat, resize)
 	if piping {
@@ -119,15 +123,19 @@ func run() error {
 		}
 		defer sourcef.Close()
 		input = sourcef
-		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
-			return fmt.Errorf("preparing output directory: %w", err)
+		// A bundle is a directory the encoder builds itself, so there is no
+		// file to open for it.
+		if !bundles[target(outputFormat, out, false, extension(filepath.Ext(in)))] {
+			if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
+				return fmt.Errorf("preparing output directory: %w", err)
+			}
+			outputf, err := os.Create(out)
+			if err != nil {
+				return fmt.Errorf("creating output file: %w", err)
+			}
+			defer outputf.Close()
+			output = outputf
 		}
-		outputf, err := os.Create(out)
-		if err != nil {
-			return fmt.Errorf("creating output file: %w", err)
-		}
-		defer outputf.Close()
-		output = outputf
 	}
 	source, err := io.ReadAll(input)
 	if err != nil {
@@ -153,6 +161,14 @@ func run() error {
 		return fmt.Errorf("decoding input: %w", err)
 	}
 	switch kind := target(outputFormat, out, piping, format); kind {
+	case ".icon":
+		if piping {
+			return errors.New("a .icon is a directory, so it cannot be written to a pipe")
+		}
+		name := strings.TrimSuffix(filepath.Base(out), filepath.Ext(out))
+		if err := appicon.New(img, name).Write(out); err != nil {
+			return fmt.Errorf("writing icon bundle: %w", err)
+		}
 	case ".icns":
 		if err := icns.NewEncoder(output).WithAlgorithm(algorithm).Encode(img); err != nil {
 			return fmt.Errorf("encoding icns: %w", err)
@@ -234,7 +250,7 @@ func extension(name string) string {
 
 // writable reports whether this program can write the format.
 func writable(ext string) bool {
-	return containers[ext] || encoders[ext] != nil
+	return containers[ext] || bundles[ext] || encoders[ext] != nil
 }
 
 func sanitiseInputs(
