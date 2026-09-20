@@ -1,0 +1,52 @@
+name: Tahoe icon spike
+
+# Run by hand only. It asks the macOS runner what actool makes of an icon
+# authored without a Mac, and keeps the answer for reading elsewhere.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    name: compile a .icon with actool
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # The runner's versions decide whether the answer is about Tahoe or
+      # about whatever Xcode shipped before it.
+      - name: What is on the runner
+        run: |
+          sw_vers
+          xcodebuild -version
+          xcrun --find actool
+          xcrun actool --version --output-format human-readable-text || true
+
+      - name: Compile the icon
+        run: |
+          mkdir -p out
+          xcrun actool spike/Probe.icon --compile out \
+            --output-format human-readable-text --notices --warnings --errors \
+            --output-partial-info-plist out/partial.plist \
+            --app-icon Probe --include-all-app-icons \
+            --enable-on-demand-resources NO \
+            --development-region en \
+            --target-device mac \
+            --minimum-deployment-target 26.0 \
+            --platform macosx
+
+      # assetutil describes the catalog Apple's own way, which is the
+      # description to hold any reimplementation against.
+      - name: Describe what came out
+        run: |
+          ls -la out
+          echo "--- assetutil ---"
+          xcrun assetutil --info out/Assets.car || true
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tahoe-assets-car
+          path: out
+          if-no-files-found: error
