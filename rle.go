@@ -13,35 +13,41 @@ import (
 // produced. A lead byte below 128 introduces lead+1 literal bytes; a lead
 // byte of 128 or above repeats the byte after it lead-125 times. Data that is
 // already want bytes long is stored uncompressed and is returned as it is.
-func unpackRLE(data []byte, want int) ([]byte, error) {
+//
+// The second result is how many bytes of data were read, which is short of
+// its length when the stream carries padding after the last run.
+func unpackRLE(data []byte, want int) ([]byte, int, error) {
 	if len(data) == want {
-		return data, nil
+		return data, want, nil
 	}
 	out := make([]byte, 0, want)
+	used := 0
 	for i := 0; i < len(data) && len(out) < want; {
 		lead := int(data[i])
 		i++
 		if lead < 128 {
 			n := lead + 1
 			if i+n > len(data) {
-				return nil, fmt.Errorf("%w: literal run of %d bytes overruns the element", ErrMalformed, n)
+				return nil, i, fmt.Errorf("%w: literal run of %d bytes overruns the element", ErrMalformed, n)
 			}
 			out = append(out, data[i:i+n]...)
 			i += n
+			used = i
 			continue
 		}
 		if i == len(data) {
-			return nil, fmt.Errorf("%w: repeat run with no byte to repeat", ErrMalformed)
+			return nil, i, fmt.Errorf("%w: repeat run with no byte to repeat", ErrMalformed)
 		}
 		for n := lead - 125; n > 0; n-- {
 			out = append(out, data[i])
 		}
 		i++
+		used = i
 	}
 	if len(out) != want {
-		return nil, fmt.Errorf("%w: expanded to %d bytes, want %d", ErrMalformed, len(out), want)
+		return nil, len(data), fmt.Errorf("%w: expanded to %d bytes, want %d", ErrMalformed, len(out), want)
 	}
-	return out, nil
+	return out, used, nil
 }
 
 // packRLE compresses data into the icns variant of PackBits. A run of three
@@ -122,7 +128,7 @@ func splitPlanes(img image.Image, side int) (planes, mask []byte) {
 // follow an ARGB header, alpha first and then the colour channels.
 func decodeARGB(data []byte, side int) (image.Image, error) {
 	pixels := side * side
-	planes, err := unpackRLE(data, pixels*4)
+	planes, _, err := unpackRLE(data, pixels*4)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +150,7 @@ func decodeARGB(data []byte, side int) (image.Image, error) {
 // opaque, which is how the icons that predate masks are meant to render.
 func decodeRGB(data, mask []byte, side int) (image.Image, error) {
 	pixels := side * side
-	planes, err := unpackRLE(data, pixels*3)
+	planes, _, err := unpackRLE(data, pixels*3)
 	if err != nil {
 		return nil, err
 	}

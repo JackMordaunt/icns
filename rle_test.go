@@ -90,7 +90,7 @@ func TestUnpackRLE(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(st *testing.T) {
-			got, err := unpackRLE(tt.data, tt.want)
+			got, _, err := unpackRLE(tt.data, tt.want)
 			if tt.err != nil {
 				if !errors.Is(err, tt.err) {
 					st.Fatalf("error = %v, want %v", err, tt.err)
@@ -122,7 +122,7 @@ func TestPadRLE(t *testing.T) {
 	}
 	// Whatever the padding, the data still reads back.
 	planes := bytes.Repeat([]byte{0x40}, 768)
-	out, err := unpackRLE(padRLE(packRLE(planes), len(planes)), len(planes))
+	out, _, err := unpackRLE(padRLE(packRLE(planes), len(planes)), len(planes))
 	if err != nil {
 		t.Fatal(err)
 	}
