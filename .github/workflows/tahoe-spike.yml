@@ -56,6 +56,23 @@ jobs:
             --platform macosx
           ls -la written
 
+      # The fields that vary by appearance have nowhere to be checked but
+      # here: a manifest actool ignores looks exactly like one it honours,
+      # until the catalogs are compared.
+      - name: Compile the composed icon
+        run: |
+          mkdir -p rich
+          xcrun actool spike/Rich.icon --compile rich \
+            --output-format human-readable-text --notices --warnings --errors \
+            --output-partial-info-plist rich/partial.plist \
+            --app-icon Rich --include-all-app-icons \
+            --enable-on-demand-resources NO \
+            --development-region en \
+            --target-device mac \
+            --minimum-deployment-target 26.0 \
+            --platform macosx
+          ls -la rich
+
       # assetutil describes the catalog Apple's own way, which is the
       # description to hold any reimplementation against.
       - name: Describe what came out
@@ -65,9 +82,12 @@ jobs:
           xcrun assetutil --info out/Assets.car | head -40 || true
           echo "--- assetutil: library written ---"
           xcrun assetutil --info written/Assets.car | head -40 || true
-          echo "--- do the two catalogs agree in shape? ---"
-          xcrun assetutil --info out/Assets.car | grep -c AssetType || true
-          xcrun assetutil --info written/Assets.car | grep -c AssetType || true
+          xcrun assetutil --info rich/Assets.car > rich/assetutil.json || true
+          echo "--- renditions: plain vs composed ---"
+          echo "plain    $(xcrun assetutil --info written/Assets.car | grep -c AssetType)"
+          echo "composed $(grep -c AssetType rich/assetutil.json)"
+          echo "--- types the composed catalog holds ---"
+          grep -oE '"AssetType" : "[^"]+"' rich/assetutil.json | sort | uniq -c | sort -rn
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -75,4 +95,5 @@ jobs:
           path: |
             out
             written
+            rich
           if-no-files-found: error
