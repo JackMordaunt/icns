@@ -178,6 +178,32 @@ for _, icon := range d.Icons() { // Largest first.
 
 `Entry.Payload` returns the bytes the file stores, for handling an element yourself.
 
+### Checking a file
+
+`Validate` reports what the platform that owns the format will make of a file, most serious first. It finds the failures that look like success: colour planes ending on their last run lose their tail to Apple silicon, an icon whose mask is absent draws fully opaque, and `icp4` renders everywhere except an app bundle.
+
+```go
+problems, err := icns.Validate(src)
+if err != nil {
+        log.Fatalf("reading icns: %v", err)
+}
+for _, p := range problems {
+        fmt.Println(p)
+}
+```
+
+```
+degraded: il32 32: the file holds no l8mk element, so the icon draws fully opaque
+degraded: icp4 16: does not render from an app bundle, and the file holds no is32 and s8mk at that size
+advice: the file holds no ic13 256, ic08 256, so macOS scales another icon where they are asked for
+```
+
+Each finding carries a `Severity`: `Invisible` when the icon is not drawn at all, `Degraded` when it is drawn but not as it was meant to be, and `Advice` when nothing is wrong and something usual is simply absent.
+
+`ico.Validate` does the same for Windows, where the finding that bites is a PNG frame stored without a 32-bit alpha channel. Every Windows decoder skips such a frame and falls back to a smaller icon, so the file looks correct until it is viewed large.
+
+`icnsify -c icon.icns` runs the same check from the command line, printing the findings and exiting non-zero when one of them changes what is drawn.
+
 ## Windows icons
 
 `ico` is a sibling package for the Windows `.ico` format, with the same shape as the icns API, so one mental model covers both.
@@ -233,6 +259,7 @@ $env:GOWORK = 'off'; go get github.com/jackmordaunt/icns/v4@latest; go mod tidy;
 - [x] Symmetric test: `decode(encode(img)) == img`
 - [x] Windows Explorer thumbnails
 - [x] Windows `.ico` encoder and decoder
+- [x] Validation against what the platforms actually accept
 
 ## Coffee
 
