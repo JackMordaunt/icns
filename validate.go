@@ -122,27 +122,26 @@ func (e Entry) problems() []Problem {
 	return problems
 }
 
-// paddingProblems reports a run-length encoded icon whose stream ends on its
+// paddingProblems reports a colour plane element whose stream ends on its
 // last run. Apple's reader on Apple silicon drops the last value of such a
 // stream, so a byte has to follow it for the icon to survive.
+//
+// Only the three plane types are read this way. The ARGB elements are left
+// alone: actool on macOS 26 writes them with their stream ending exactly on
+// the last run, so whatever drops a value does not reach them.
 func (e Entry) paddingProblems() []Problem {
+	if e.ImageFormat != ImageFormatRGB {
+		return nil
+	}
 	var (
 		pixels = int(e.Size) * int(e.Size)
-		data   []byte
-		want   int
+		data   = e.data
+		want   = pixels * 3
 	)
-	switch e.ImageFormat {
-	case ImageFormatRGB:
-		data, want = e.data, pixels*3
-		// it32 is the one colour element that prefixes its planes with four
-		// zero bytes.
-		if e.ID == "it32" && len(data) >= 4 && binary.BigEndian.Uint32(data[:4]) == 0 {
-			data = data[4:]
-		}
-	case ImageFormatARGB:
-		data, want = e.data[len(argbHeader):], pixels*4
-	default:
-		return nil
+	// it32 is the one colour element that prefixes its planes with four zero
+	// bytes.
+	if e.ID == "it32" && len(data) >= 4 && binary.BigEndian.Uint32(data[:4]) == 0 {
+		data = data[4:]
 	}
 	// Data stored at its exact length is not compressed, so there is no run
 	// for a reader to drop.

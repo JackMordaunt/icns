@@ -115,6 +115,27 @@ func TestValidateAcceptsUncompressedPlanes(t *testing.T) {
 	}
 }
 
+// TestValidateLeavesARGBAlone records why the padding check covers only the
+// three plane types. actool on macOS 26 compiled an icon into an icns whose
+// ic04 is ARGB with its stream ending exactly on the last run, so warning
+// about that shape would be accusing Apple's own output.
+func TestValidateLeavesARGBAlone(t *testing.T) {
+	const side = 16
+	planes := make([]byte, side*side*4)
+	for i := range planes {
+		planes[i] = byte(0x40 + i/(side*side))
+	}
+	packed := packRLE(planes)
+	if len(packed) == len(planes) {
+		t.Fatal("fixture did not compress, so there is no run to end on")
+	}
+	data := file(encodeElement("ic04", append([]byte("ARGB"), packed...)))
+	problems := validate(t, data)
+	if _, ok := found(problems, "Apple silicon drops"); ok {
+		t.Errorf("reported padding for an ARGB icon: %v", problems)
+	}
+}
+
 func TestValidateReportsAMissingMask(t *testing.T) {
 	planes, _ := splitPlanes(flat(32), 32)
 	data := file(encodeElement("il32", padRLE(packRLE(planes), len(planes))))
