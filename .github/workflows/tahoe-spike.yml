@@ -40,16 +40,39 @@ jobs:
             --minimum-deployment-target 26.0 \
             --platform macosx
 
+      # The same question asked of a bundle the library wrote rather than
+      # one written by hand, which is what has to hold.
+      - name: Compile the icon the library wrote
+        run: |
+          mkdir -p written
+          xcrun actool spike/Written.icon --compile written \
+            --output-format human-readable-text --notices --warnings --errors \
+            --output-partial-info-plist written/partial.plist \
+            --app-icon Written --include-all-app-icons \
+            --enable-on-demand-resources NO \
+            --development-region en \
+            --target-device mac \
+            --minimum-deployment-target 26.0 \
+            --platform macosx
+          ls -la written
+
       # assetutil describes the catalog Apple's own way, which is the
       # description to hold any reimplementation against.
       - name: Describe what came out
         run: |
           ls -la out
-          echo "--- assetutil ---"
-          xcrun assetutil --info out/Assets.car || true
+          echo "--- assetutil: hand written ---"
+          xcrun assetutil --info out/Assets.car | head -40 || true
+          echo "--- assetutil: library written ---"
+          xcrun assetutil --info written/Assets.car | head -40 || true
+          echo "--- do the two catalogs agree in shape? ---"
+          xcrun assetutil --info out/Assets.car | grep -c AssetType || true
+          xcrun assetutil --info written/Assets.car | grep -c AssetType || true
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: tahoe-assets-car
-          path: out
+          path: |
+            out
+            written
           if-no-files-found: error
