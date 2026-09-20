@@ -15,12 +15,17 @@ import (
 	"strings"
 
 	"github.com/jackmordaunt/icns/v4"
+	"github.com/jackmordaunt/icns/v4/exe"
 	"github.com/jackmordaunt/icns/v4/ico"
 )
 
 // containers are the formats that hold an icon at several sizes, as opposed
 // to the plain images they are built from and unpacked into.
 var containers = map[string]bool{".icns": true, ".ico": true}
+
+// binaries are the Windows files that carry icons inside them rather than
+// being icons themselves.
+var binaries = map[string]bool{".exe": true, ".dll": true}
 
 // errUsage signals that no work was requested; usage has been printed.
 var errUsage = errors.New("usage")
@@ -124,18 +129,27 @@ func run() error {
 		defer outputf.Close()
 		output = outputf
 	}
-	if containers[extension(filepath.Ext(in))] {
-		by, err := io.ReadAll(input)
-		if err != nil {
-			return fmt.Errorf("probing file: reading file: %w", err)
-		}
-		if err := describe(extension(filepath.Ext(in)), bytes.NewReader(by)); err != nil {
+	source, err := io.ReadAll(input)
+	if err != nil {
+		return fmt.Errorf("reading input: %w", err)
+	}
+	var (
+		img    image.Image
+		format string
+	)
+	if kind := container(source, extension(filepath.Ext(in))); kind != "" {
+		if err := describe(kind, bytes.NewReader(source)); err != nil {
 			return fmt.Errorf("probing file: %w", err)
 		}
-		input = bytes.NewReader(by)
 	}
-	img, format, err := image.Decode(input)
-	if err != nil {
+	// A Windows binary carries icons rather than being one, so the artwork
+	// comes out of its resources instead of through an image decoder.
+	if binaries[container(source, extension(filepath.Ext(in)))] {
+		format = ".exe"
+		if img, err = exe.Decode(bytes.NewReader(source)); err != nil {
+			return fmt.Errorf("reading icons from the binary: %w", err)
+		}
+	} else if img, format, err = image.Decode(bytes.NewReader(source)); err != nil {
 		return fmt.Errorf("decoding input: %w", err)
 	}
 	switch kind := target(outputFormat, out, piping, format); kind {
@@ -158,6 +172,18 @@ func run() error {
 // describe logs the icons a container holds.
 func describe(ext string, r io.Reader) error {
 	switch ext {
+	case ".exe", ".dll":
+		by, err := io.ReadAll(r)
+		if err != nil {
+			return err
+		}
+		groups, err := exe.Icons(bytes.NewReader(by))
+		if err != nil {
+			return err
+		}
+		for _, group := range groups {
+			slog.Info("found", "icon", group)
+		}
 	case ".ico":
 		d, err := ico.NewDecoder(r)
 		if err != nil {
@@ -191,7 +217,7 @@ func target(want, out string, piping bool, got string) string {
 			return ext
 		}
 	}
-	if containers[extension(got)] {
+	if containers[extension(got)] || binaries[extension(got)] {
 		return ".png"
 	}
 	return ".icns"

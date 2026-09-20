@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/jackmordaunt/icns/v4"
+	"github.com/jackmordaunt/icns/v4/exe"
 	"github.com/jackmordaunt/icns/v4/ico"
 )
 
@@ -44,8 +45,27 @@ func check(path string, r io.Reader) error {
 				serious++
 			}
 		}
+	case ".exe", ".dll":
+		// The icons Explorer draws for a shipped binary are the ones worth
+		// checking, and they are only reachable through its resources.
+		groups, err := exe.Icons(bytes.NewReader(data))
+		if err != nil {
+			return fmt.Errorf("reading %s: %w", name(path), err)
+		}
+		for _, group := range groups {
+			problems, err := ico.Validate(bytes.NewReader(group.ICO()))
+			if err != nil {
+				return fmt.Errorf("reading %s: %s: %w", name(path), group, err)
+			}
+			for _, p := range problems {
+				lines = append(lines, fmt.Sprintf("%s: %s", group, p))
+				if p.Severity != ico.Advice {
+					serious++
+				}
+			}
+		}
 	default:
-		return fmt.Errorf("%s is not an icns or ico file", name(path))
+		return fmt.Errorf("%s is not an icns, ico or Windows binary", name(path))
 	}
 	for _, line := range lines {
 		fmt.Fprintf(os.Stdout, "%s: %s\n", name(path), line)
@@ -56,14 +76,20 @@ func check(path string, r io.Reader) error {
 	return nil
 }
 
-// container names the icon format the data holds, by the bytes it begins
-// with and failing that by the extension it was given.
+// container names what the data holds, by the bytes it begins with and
+// failing that by the extension it was given. A Windows binary is named by
+// its extension, since the icons are inside it rather than at its start.
 func container(data []byte, ext string) string {
 	switch {
 	case len(data) >= 4 && string(data[:4]) == "icns":
 		return ".icns"
 	case len(data) >= 4 && string(data[:4]) == "\x00\x00\x01\x00":
 		return ".ico"
+	case len(data) >= 2 && string(data[:2]) == "MZ":
+		if binaries[ext] {
+			return ext
+		}
+		return ".exe"
 	}
 	if containers[ext] {
 		return ext

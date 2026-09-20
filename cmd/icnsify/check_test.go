@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"os"
 	"strings"
 	"testing"
 
@@ -113,7 +114,7 @@ func TestCheckFailsOnFindingsThatShow(t *testing.T) {
 func TestCheckRejectsWhatIsNotAnIcon(t *testing.T) {
 	plain := encoded(t, func(b *bytes.Buffer) error { return png.Encode(b, art(64)) })
 	err := check("art.png", bytes.NewReader(plain))
-	if err == nil || !strings.Contains(err.Error(), "not an icns or ico file") {
+	if err == nil || !strings.Contains(err.Error(), "not an icns, ico or Windows binary") {
 		t.Errorf("check returned %v, want it to refuse a plain image", err)
 	}
 }
@@ -131,12 +132,41 @@ func TestContainerReadsTheBytesFirst(t *testing.T) {
 		{"ico named icns", encoded(t, func(b *bytes.Buffer) error { return ico.Encode(b, art(64)) }), ".icns", ".ico"},
 		{"unknown bytes, known extension", []byte("rubbish"), ".icns", ".icns"},
 		{"unknown bytes, plain extension", []byte("rubbish"), ".png", ""},
+		{"a binary named exe", []byte("MZ\x90\x00"), ".exe", ".exe"},
+		{"a binary named dll", []byte("MZ\x90\x00"), ".dll", ".dll"},
+		{"a binary named nothing", []byte("MZ\x90\x00"), "", ".exe"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := container(tt.data, tt.ext); got != tt.want {
 				t.Errorf("container = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+// TestCheckReadsABinary uses the exe package's fixture, a DLL whose resource
+// section mingw laid out, rather than building another one here.
+func TestCheckReadsABinary(t *testing.T) {
+	const fixture = "../../exe/testdata/icon.dll"
+	data, err := os.ReadFile(fixture)
+	if err != nil {
+		t.Fatalf("reading fixture: %v", err)
+	}
+	// The fixture holds 32, 24 and 16, so the only finding is the advice
+	// that larger sizes are absent.
+	if err := check("icon.dll", bytes.NewReader(data)); err != nil {
+		t.Errorf("check reported %v", err)
+	}
+}
+
+func TestCheckRefusesABinaryWithoutIcons(t *testing.T) {
+	data, err := os.ReadFile("../../exe/testdata/plain.dll")
+	if err != nil {
+		t.Fatalf("reading fixture: %v", err)
+	}
+	err = check("plain.dll", bytes.NewReader(data))
+	if err == nil || !strings.Contains(err.Error(), "no icons found") {
+		t.Errorf("check returned %v, want it to report no icons", err)
 	}
 }
 
