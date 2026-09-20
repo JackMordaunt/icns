@@ -9,6 +9,21 @@
 //
 // Nothing here compiles a bundle. That is actool's work, and it runs only on
 // macOS; a bundle written by this package is the input it takes.
+//
+// # A crash worth knowing about
+//
+// actool from Xcode 26.6 crashes, rather than reporting a problem, on some
+// groups that specialise translucency. A group holding only a shadow and
+// translucency specialised for the default appearance and for tinted brings
+// it down with an exception from inside its own asset selection. The same
+// group compiles once it also carries lighting, a blend mode, or a
+// translucency for dark, and so does the equivalent group taken from a
+// shipping app.
+//
+// The trigger is not fully characterised, so this package writes what it is
+// given and leaves the judgement to the compiler. A bundle that fails to
+// compile with an exception rather than an error is worth reshaping before
+// it is worth debugging.
 package appicon
 
 import (
