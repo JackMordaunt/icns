@@ -1,0 +1,5 @@
+{
+  "fill": "automatic",
+  "groups": [{"layers":[{"glass": false, "image-name": "Back.png", "name": "Back"}], "shadow": {"kind": "neutral", "opacity": 0.5}, "translucency-specializations": [{"value": {"enabled": true, "value": 0.84}}, {"appearance": "dark", "value": {"enabled": true, "value": 0.84}}, {"appearance": "tinted", "value": {"enabled": false, "value": 0.84}}]}],
+  "supported-platforms": { "squares": ["macOS"] }
+}

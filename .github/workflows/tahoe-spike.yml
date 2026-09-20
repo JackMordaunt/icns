@@ -63,7 +63,7 @@ jobs:
         run: |
           mkdir -p variants
           fail=0
-          for bundle in spike/variants/*.icon; do
+          for bundle in spike/variants/*.icon spike/probes/*.icon; do
             name="$(basename "$bundle" .icon)"
             out="variants/$name"
             mkdir -p "$out"
