@@ -49,6 +49,9 @@ func run() error {
 		"Output format: icns, ico, png or jpg. Defaults from the output path.")
 	intFlag(&resize, "resize", "r", 5,
 		"Quality of resize algorithm, 0 to 5 from fastest to slowest.")
+	var checkOnly bool
+	boolFlag(&checkOnly, "check", "c",
+		"Report what the platforms will make of an icon file, and exit.")
 	var showVersion bool
 	boolFlag(&showVersion, "version", "v", "Print the version and exit.")
 	flag.Usage = usage
@@ -71,6 +74,23 @@ func run() error {
 		if piping, err = stdinIsPipe(); err != nil {
 			return err
 		}
+	}
+	// Checking reads the input and writes a report, so it runs before any
+	// output path is resolved or created.
+	if checkOnly {
+		if piping {
+			return check("", os.Stdin)
+		}
+		if inputPath == "" {
+			usage()
+			return errUsage
+		}
+		source, err := os.Open(inputPath)
+		if err != nil {
+			return fmt.Errorf("opening source image: %w", err)
+		}
+		defer source.Close()
+		return check(inputPath, source)
 	}
 	if outputFormat != "" && !writable(extension(outputFormat)) {
 		return fmt.Errorf("cannot write %s: choose from icns, ico, png or jpg", outputFormat)

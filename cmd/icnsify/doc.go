@@ -61,7 +61,7 @@ func boolFlag(p *bool, long, short string, usage string) {
 
 func usage() {
 	w := flag.CommandLine.Output()
-	fmt.Fprintf(w, "%s\n\nUsage: icnsify [-i input] [-o output] [-f format] [-r quality]\n\nOptions:\n", buildInfo())
+	fmt.Fprintf(w, "%s\n\nUsage: icnsify [-i input] [-o output] [-f format] [-r quality] [-c]\n\nOptions:\n", buildInfo())
 	for _, o := range options {
 		fmt.Fprintf(w, "  -%s, --%s\n        %s", o.short, o.long, o.usage)
 		if o.def != "" && o.def != "0" {
