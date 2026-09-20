@@ -23,6 +23,7 @@ func main() {
 	api := js.Global().Get("Object").New()
 	api.Set("convert", js.FuncOf(convert))
 	api.Set("inspect", js.FuncOf(inspect))
+	api.Set("validate", js.FuncOf(validate))
 	js.Global().Set("icns", api)
 	// The page calls into this, so the program has to stay resident.
 	select {}
@@ -93,6 +94,56 @@ func inspect(_ js.Value, args []js.Value) (out any) {
 	result := js.Global().Get("Object").New()
 	result.Set("ok", true)
 	result.Set("icons", list)
+	return result
+}
+
+// validate reports what the platform that owns the format will make of an
+// icon file, as an array of findings ordered by severity.
+func validate(_ js.Value, args []js.Value) (out any) {
+	defer func() {
+		if r := recover(); r != nil {
+			out = failure(fmt.Errorf("validating: %v", r))
+		}
+	}()
+	if len(args) < 1 {
+		return failure(errors.New("validate wants an icon file"))
+	}
+	type finding struct{ severity, icon, message string }
+	var (
+		src      = toGo(args[0])
+		findings []finding
+	)
+	switch {
+	case bytes.HasPrefix(src, []byte("icns")):
+		problems, err := icns.Validate(bytes.NewReader(src))
+		if err != nil {
+			return failure(err)
+		}
+		for _, p := range problems {
+			findings = append(findings, finding{p.Severity.String(), p.Icon, p.Message})
+		}
+	case bytes.HasPrefix(src, []byte{0x00, 0x00, 0x01, 0x00}):
+		problems, err := ico.Validate(bytes.NewReader(src))
+		if err != nil {
+			return failure(err)
+		}
+		for _, p := range problems {
+			findings = append(findings, finding{p.Severity.String(), p.Icon, p.Message})
+		}
+	default:
+		return failure(errors.New("not an icns or ico file"))
+	}
+	list := js.Global().Get("Array").New(len(findings))
+	for i, f := range findings {
+		item := js.Global().Get("Object").New()
+		item.Set("severity", f.severity)
+		item.Set("icon", f.icon)
+		item.Set("message", f.message)
+		list.SetIndex(i, item)
+	}
+	result := js.Global().Get("Object").New()
+	result.Set("ok", true)
+	result.Set("problems", list)
 	return result
 }
 
