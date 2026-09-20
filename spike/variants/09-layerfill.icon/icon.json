@@ -1,0 +1,42 @@
+{
+  "fill": "automatic",
+  "groups": [
+    {
+      "layers": [
+        {
+          "fill-specializations": [
+            {
+              "appearance": "dark",
+              "value": "automatic"
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "linear-gradient": [
+                  "display-p3:0.90000,0.90000,0.90000,0.83000",
+                  "srgb:1.00000,1.00000,1.00000,0.41987"
+                ]
+              }
+            }
+          ],
+          "glass": false,
+          "image-name": "Back.png",
+          "name": "Back"
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.5
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}

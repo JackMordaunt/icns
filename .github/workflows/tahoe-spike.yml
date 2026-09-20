@@ -56,22 +56,34 @@ jobs:
             --platform macosx
           ls -la written
 
-      # The fields that vary by appearance have nowhere to be checked but
-      # here: a manifest actool ignores looks exactly like one it honours,
-      # until the catalogs are compared.
-      - name: Compile the composed icon
+      # actool crashes rather than explaining itself, so each field is
+      # compiled on its own. The step reports every verdict instead of
+      # stopping at the first failure.
+      - name: Compile each field on its own
         run: |
-          mkdir -p rich
-          xcrun actool spike/Rich.icon --compile rich \
-            --output-format human-readable-text --notices --warnings --errors \
-            --output-partial-info-plist rich/partial.plist \
-            --app-icon Rich --include-all-app-icons \
-            --enable-on-demand-resources NO \
-            --development-region en \
-            --target-device mac \
-            --minimum-deployment-target 26.0 \
-            --platform macosx
-          ls -la rich
+          mkdir -p variants
+          fail=0
+          for bundle in spike/variants/*.icon; do
+            name="$(basename "$bundle" .icon)"
+            out="variants/$name"
+            mkdir -p "$out"
+            if xcrun actool "$bundle" --compile "$out" \
+                --output-format human-readable-text --errors \
+                --output-partial-info-plist "$out/partial.plist" \
+                --app-icon "$name" --include-all-app-icons \
+                --enable-on-demand-resources NO \
+                --development-region en \
+                --target-device mac \
+                --minimum-deployment-target 26.0 \
+                --platform macosx > "$out/log.txt" 2>&1; then
+              echo "PASS  $name  ($(ls -la "$out/Assets.car" 2>/dev/null | awk '{print $5}') bytes)"
+            else
+              fail=1
+              echo "FAIL  $name"
+              sed -n '1,4p' "$out/log.txt" | sed 's/^/        /'
+            fi
+          done
+          echo "any failures: $fail"
 
       # assetutil describes the catalog Apple's own way, which is the
       # description to hold any reimplementation against.
@@ -82,12 +94,11 @@ jobs:
           xcrun assetutil --info out/Assets.car | head -40 || true
           echo "--- assetutil: library written ---"
           xcrun assetutil --info written/Assets.car | head -40 || true
-          xcrun assetutil --info rich/Assets.car > rich/assetutil.json || true
-          echo "--- renditions: plain vs composed ---"
-          echo "plain    $(xcrun assetutil --info written/Assets.car | grep -c AssetType)"
-          echo "composed $(grep -c AssetType rich/assetutil.json)"
-          echo "--- types the composed catalog holds ---"
-          grep -oE '"AssetType" : "[^"]+"' rich/assetutil.json | sort | uniq -c | sort -rn
+          echo "--- renditions per variant, against the plain bundle ---"
+          echo "plain $(xcrun assetutil --info written/Assets.car | grep -c AssetType)"
+          for car in variants/*/Assets.car; do
+            echo "$(basename "$(dirname "$car")") $(xcrun assetutil --info "$car" | grep -c AssetType)"
+          done
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -95,5 +106,5 @@ jobs:
           path: |
             out
             written
-            rich
+            variants
           if-no-files-found: error

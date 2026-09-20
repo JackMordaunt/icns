@@ -1,0 +1,32 @@
+{
+  "fill": "automatic",
+  "groups": [
+    {
+      "blur-material-specializations": [
+        {
+          "value": 1
+        }
+      ],
+      "layers": [
+        {
+          "glass": false,
+          "image-name": "Back.png",
+          "name": "Back"
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.5
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "fill": "automatic",
+  "groups": [
+    {
+      "blend-mode-specializations": [
+        {
+          "appearance": "tinted",
+          "value": "normal"
+        }
+      ],
+      "layers": [
+        {
+          "glass": false,
+          "image-name": "Back.png",
+          "name": "Back"
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.5
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}
