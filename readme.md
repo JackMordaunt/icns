@@ -242,6 +242,38 @@ The reassembly is exact: the ico handed to the linker comes back out of the bina
 
 `icnsify` takes a binary wherever it takes an image, so `icnsify -i app.exe -f icns` converts the icon a program ships with, and `icnsify -c app.exe` checks what Explorer will draw for it.
 
+## macOS 26 icons
+
+macOS 26 draws app icons from a `.icon` bundle compiled into an asset catalog, and reads the older `.icns` where that is absent, so an app targeting both ships both. `appicon` writes the bundle: a manifest naming layers, and the images those layers hold.
+
+```go
+import "github.com/jackmordaunt/icns/v4/appicon"
+
+if err := appicon.New(art, "App").Write("App.icon"); err != nil {
+        log.Fatalf("writing bundle: %v", err)
+}
+```
+
+`Bundle` takes groups of layers with their own shadow, translucency and glass, for an icon built from more than one drawing. `Files` renders the same thing as bytes keyed by path, for writing somewhere other than a directory.
+
+`icnsify -i art.png -f icon -o App.icon` does it from the command line.
+
+### Compiling one
+
+Turning a bundle into the `Assets.car` macOS reads is `actool`'s work, and `actool` runs only on macOS. It is the single step that needs Apple's tooling; writing the bundle does not, so the machine drawing the icon need not be a Mac.
+
+```yaml
+- runs-on: macos-latest
+  run: |
+    xcrun actool App.icon --compile build \
+      --app-icon App --include-all-app-icons \
+      --output-partial-info-plist build/partial.plist \
+      --minimum-deployment-target 26.0 \
+      --target-device mac --platform macosx
+```
+
+`actool` writes three things: the `Assets.car`, an `.icns` for older systems, and a plist naming both through `CFBundleIconFile` and `CFBundleIconName`. The result is a build artifact that changes only when the icon does, so it is generated once and kept.
+
 ## Development
 
 The repository is a Go workspace of three modules:
@@ -281,6 +313,7 @@ $env:GOWORK = 'off'; go get github.com/jackmordaunt/icns/v4@latest; go mod tidy;
 - [x] Windows `.ico` encoder and decoder
 - [x] Validation against what the platforms actually accept
 - [x] Reading icons out of Windows binaries
+- [x] Writing the macOS 26 icon bundle
 
 ## Coffee
 
