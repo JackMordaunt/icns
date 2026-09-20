@@ -1,8 +1,11 @@
 name: Tahoe icon spike
 
-# Run by hand only. It asks the macOS runner what actool makes of an icon
-# authored without a Mac, and keeps the answer for reading elsewhere.
+# It asks the macOS runner what actool makes of an icon authored without a
+# Mac, and keeps the answer for reading elsewhere. A dispatch is only offered
+# for a workflow on the default branch, so this one runs on its own branch.
 on:
+  push:
+    branches: [tahoe-spike]
   workflow_dispatch:
 
 permissions:
