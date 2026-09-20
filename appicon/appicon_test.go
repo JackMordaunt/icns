@@ -143,6 +143,135 @@ func TestGlassAndSeveralGroups(t *testing.T) {
 	}
 }
 
+// TestSpecializedValuesReplaceThePlainOnes covers the pairs where the
+// manifest holds either a value or a list of them specialised by appearance,
+// never both.
+func TestSpecializedValuesReplaceThePlainOnes(t *testing.T) {
+	material := 1.0
+	b := Bundle{
+		Fill:  "automatic",
+		Fills: []Specialized[Fill]{{Value: NamedFill("system-light")}},
+		Groups: []Group{{
+			Layers:         []Layer{{Name: "One", Image: art(16)}},
+			Translucency:   &Translucency{Enabled: true, Value: 0.5},
+			Translucencies: []Specialized[Translucency]{{Value: Translucency{Enabled: false, Value: 0.8}}},
+			BlurMaterial:   &material,
+			BlurMaterials:  []Specialized[float64]{{Value: 2}},
+		}},
+	}
+	files, err := b.Files()
+	if err != nil {
+		t.Fatalf("rendering: %v", err)
+	}
+	doc := decode(t, files)
+	if _, ok := doc["fill"]; ok {
+		t.Errorf("wrote a plain fill beside the specialised one: %v", doc["fill"])
+	}
+	if _, ok := doc["fill-specializations"]; !ok {
+		t.Error("did not write the specialised fill")
+	}
+	group := doc["groups"].([]any)[0].(map[string]any)
+	for _, plain := range []string{"translucency", "blur-material"} {
+		if _, ok := group[plain]; ok {
+			t.Errorf("wrote a plain %s beside the specialised one: %v", plain, group[plain])
+		}
+	}
+	for _, special := range []string{"translucency-specializations", "blur-material-specializations"} {
+		if _, ok := group[special]; !ok {
+			t.Errorf("did not write %s", special)
+		}
+	}
+}
+
+// TestRichManifestMatchesTheShippingShape builds the manifest a composed icon
+// needs and holds its keys against the ones a shipping app's bundle uses.
+func TestRichManifestMatchesTheShippingShape(t *testing.T) {
+	b := Bundle{
+		Fills: []Specialized[Fill]{
+			{Value: NamedFill("system-light")},
+			{Appearance: AppearanceDark, Value: NamedFill("system-dark")},
+		},
+		Groups: []Group{{
+			BlendModes: []Specialized[string]{{Appearance: AppearanceTinted, Value: "normal"}},
+			Lighting:   "individual",
+			Specular:   true,
+			Shadow:     &Shadow{Kind: "layer-color", Opacity: 0.5},
+			Translucencies: []Specialized[Translucency]{
+				{Value: Translucency{Enabled: true, Value: 0.84}},
+				{Appearance: AppearanceTinted, Value: Translucency{Enabled: false, Value: 0.84}},
+			},
+			Layers: []Layer{{
+				Name:     "Cube",
+				Image:    art(32),
+				Glass:    true,
+				Position: &Position{Scale: 1.24, Translation: [2]float64{0, 0}},
+				Fills: []Specialized[Fill]{
+					{Appearance: AppearanceDark, Value: NamedFill("automatic")},
+					{Appearance: AppearanceTinted, Value: GradientFill(
+						"display-p3:0.90000,0.90000,0.90000,0.83000",
+						"srgb:1.00000,1.00000,1.00000,0.41987",
+					)},
+				},
+				BlendModes: []Specialized[string]{{Appearance: AppearanceDark, Value: "lighten"}},
+			}},
+		}},
+	}
+	files, err := b.Files()
+	if err != nil {
+		t.Fatalf("rendering: %v", err)
+	}
+	doc := decode(t, files)
+	group := doc["groups"].([]any)[0].(map[string]any)
+	for _, key := range []string{
+		"blend-mode-specializations", "lighting", "shadow", "specular",
+		"translucency-specializations", "layers",
+	} {
+		if _, ok := group[key]; !ok {
+			t.Errorf("group is missing %s", key)
+		}
+	}
+	layer := group["layers"].([]any)[0].(map[string]any)
+	for _, key := range []string{
+		"blend-mode-specializations", "fill-specializations", "glass",
+		"image-name", "name", "position",
+	} {
+		if _, ok := layer[key]; !ok {
+			t.Errorf("layer is missing %s", key)
+		}
+	}
+	// A gradient is the one fill written as an object naming its kind.
+	tinted := layer["fill-specializations"].([]any)[1].(map[string]any)
+	gradient, ok := tinted["value"].(map[string]any)["linear-gradient"].([]any)
+	if !ok || len(gradient) != 2 {
+		t.Errorf("gradient is %v, want two stops", tinted["value"])
+	}
+	if got := layer["position"].(map[string]any)["scale"]; got != 1.24 {
+		t.Errorf("scale is %v, want 1.24", got)
+	}
+}
+
+// TestHiddenIsWrittenOnlyWhenSet keeps a manifest from carrying a key for
+// every default a layer did not set.
+func TestHiddenIsWrittenOnlyWhenSet(t *testing.T) {
+	files, err := New(art(16), "Plain").Files()
+	if err != nil {
+		t.Fatalf("rendering: %v", err)
+	}
+	layer := decode(t, files)["groups"].([]any)[0].(map[string]any)["layers"].([]any)[0].(map[string]any)
+	if _, ok := layer["hidden"]; ok {
+		t.Errorf("wrote hidden for a layer that is not: %v", layer)
+	}
+	b := Bundle{Groups: []Group{{Layers: []Layer{{Name: "Gone", Image: art(16), Hidden: true}}}}}
+	files, err = b.Files()
+	if err != nil {
+		t.Fatalf("rendering: %v", err)
+	}
+	layer = decode(t, files)["groups"].([]any)[0].(map[string]any)["layers"].([]any)[0].(map[string]any)
+	if layer["hidden"] != true {
+		t.Errorf("hidden is %v, want true", layer["hidden"])
+	}
+}
+
 func TestFilesRejectsWhatItCannotWrite(t *testing.T) {
 	for _, tt := range []struct {
 		name   string

@@ -74,9 +74,14 @@ func (b Bundle) document() (icon, [][]string, error) {
 	}
 	doc := icon{
 		Fill:      b.Fill,
+		Fills:     b.Fills,
 		Platforms: platforms{Squares: b.Platforms},
 	}
-	if doc.Fill == "" {
+	// A specialised fill says everything the plain one does, so only one of
+	// the two is written.
+	if len(doc.Fills) > 0 {
+		doc.Fill = ""
+	} else if doc.Fill == "" {
 		doc.Fill = FillAutomatic
 	}
 	if len(doc.Platforms.Squares) == 0 {
@@ -89,7 +94,17 @@ func (b Bundle) document() (icon, [][]string, error) {
 	)
 	for i, group := range b.Groups {
 		names[i] = make([]string, len(group.Layers))
-		out := jsonGroup{Layers: make([]jsonLayer, len(group.Layers))}
+		out := jsonGroup{
+			BlendModes:     group.BlendModes,
+			BlurMaterials:  group.BlurMaterials,
+			Layers:         make([]jsonLayer, len(group.Layers)),
+			Lighting:       group.Lighting,
+			Specular:       group.Specular,
+			Translucencies: group.Translucencies,
+		}
+		if len(group.BlurMaterials) == 0 {
+			out.BlurMaterial = group.BlurMaterial
+		}
 		for j, layer := range group.Layers {
 			if layer.Image == nil {
 				return icon{}, nil, fmt.Errorf("layer %q has no image", layer.Name)
@@ -103,9 +118,13 @@ func (b Bundle) document() (icon, [][]string, error) {
 			file := name + ".png"
 			names[i][j] = file
 			out.Layers[j] = jsonLayer{
-				Glass:     layer.Glass,
-				ImageName: file,
-				Name:      name,
+				BlendModes: layer.BlendModes,
+				Fills:      layer.Fills,
+				Glass:      layer.Glass,
+				Hidden:     layer.Hidden,
+				ImageName:  file,
+				Name:       name,
+				Position:   layer.Position,
 			}
 		}
 		if s := group.Shadow; s != nil {
@@ -115,7 +134,7 @@ func (b Bundle) document() (icon, [][]string, error) {
 			}
 			out.Shadow = &jsonShadow{Kind: kind, Opacity: s.Opacity}
 		}
-		if t := group.Translucency; t != nil {
+		if t := group.Translucency; t != nil && len(group.Translucencies) == 0 {
 			out.Translucency = &jsonTranslucency{Enabled: t.Enabled, Value: t.Value}
 		}
 		doc.Groups = append(doc.Groups, out)
@@ -145,9 +164,10 @@ func layerName(name string, position int) string {
 // The manifest's shape. The names are the ones Icon Composer writes, which
 // is what actool reads.
 type icon struct {
-	Fill      string      `json:"fill"`
-	Groups    []jsonGroup `json:"groups"`
-	Platforms platforms   `json:"supported-platforms"`
+	Fill      string              `json:"fill,omitempty"`
+	Fills     []Specialized[Fill] `json:"fill-specializations,omitempty"`
+	Groups    []jsonGroup         `json:"groups"`
+	Platforms platforms           `json:"supported-platforms"`
 }
 
 type platforms struct {
@@ -155,15 +175,25 @@ type platforms struct {
 }
 
 type jsonGroup struct {
-	Layers       []jsonLayer       `json:"layers"`
-	Shadow       *jsonShadow       `json:"shadow,omitempty"`
-	Translucency *jsonTranslucency `json:"translucency,omitempty"`
+	BlendModes     []Specialized[string]       `json:"blend-mode-specializations,omitempty"`
+	BlurMaterial   *float64                    `json:"blur-material,omitempty"`
+	BlurMaterials  []Specialized[float64]      `json:"blur-material-specializations,omitempty"`
+	Layers         []jsonLayer                 `json:"layers"`
+	Lighting       string                      `json:"lighting,omitempty"`
+	Shadow         *jsonShadow                 `json:"shadow,omitempty"`
+	Specular       bool                        `json:"specular,omitempty"`
+	Translucency   *jsonTranslucency           `json:"translucency,omitempty"`
+	Translucencies []Specialized[Translucency] `json:"translucency-specializations,omitempty"`
 }
 
 type jsonLayer struct {
-	Glass     bool   `json:"glass"`
-	ImageName string `json:"image-name"`
-	Name      string `json:"name"`
+	BlendModes []Specialized[string] `json:"blend-mode-specializations,omitempty"`
+	Fills      []Specialized[Fill]   `json:"fill-specializations,omitempty"`
+	Glass      bool                  `json:"glass"`
+	Hidden     bool                  `json:"hidden,omitempty"`
+	ImageName  string                `json:"image-name"`
+	Name       string                `json:"name"`
+	Position   *Position             `json:"position,omitempty"`
 }
 
 type jsonShadow struct {

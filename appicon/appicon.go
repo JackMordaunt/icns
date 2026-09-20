@@ -24,13 +24,20 @@ var (
 	// ErrDuplicateLayer means two layers share a name, so one image would
 	// overwrite the other.
 	ErrDuplicateLayer = errors.New("two layers share a name")
+	// ErrEmptyFill means a fill names neither a gradient, a colour nor a
+	// fill the system provides.
+	ErrEmptyFill = errors.New("fill names no colour")
 )
 
 // Bundle is an icon: a manifest naming layers, and the images they hold.
 type Bundle struct {
 	// Fill is how the space behind the layers is filled. Empty is written as
-	// "automatic", which leaves the choice to the compiler.
+	// "automatic", which leaves the choice to the compiler, and is ignored
+	// when Fills is given.
 	Fill string
+	// Fills is the fill specialised by appearance, for an icon whose
+	// background differs in dark mode or when tinted.
+	Fills []Specialized[Fill]
 	// Groups are composited back to front.
 	Groups []Group
 	// Platforms are the platforms the icon offers square artwork for. Empty
@@ -46,8 +53,23 @@ type Group struct {
 	// manifest.
 	Shadow *Shadow
 	// Translucency is how far the group lets the material behind it through.
-	// Nil leaves it out of the manifest.
+	// Nil leaves it out of the manifest, and it is ignored when
+	// Translucencies is given.
 	Translucency *Translucency
+	// Translucencies is the translucency specialised by appearance.
+	Translucencies []Specialized[Translucency]
+	// Lighting is how the group is lit, such as "individual" or "combined".
+	Lighting string
+	// Specular asks for a specular highlight across the group.
+	Specular bool
+	// BlurMaterial is the material the group blurs what is behind it with.
+	// Nil leaves it out, and it is ignored when BlurMaterials is given.
+	BlurMaterial *float64
+	// BlurMaterials is the blur material specialised by appearance.
+	BlurMaterials []Specialized[float64]
+	// BlendModes is how the group composites, specialised by appearance,
+	// such as "normal" or "lighten".
+	BlendModes []Specialized[string]
 }
 
 // Layer is one image in the stack.
@@ -59,6 +81,15 @@ type Layer struct {
 	// Glass asks for the layer to be treated as glass, which the compiler
 	// lights and refracts rather than drawing flat.
 	Glass bool
+	// Hidden keeps the layer in the manifest without drawing it.
+	Hidden bool
+	// Position is where the layer sits. Nil leaves it where it was drawn.
+	Position *Position
+	// Fills is the layer's own fill, specialised by appearance. A layer
+	// given one is filled with it rather than with its image's colour.
+	Fills []Specialized[Fill]
+	// BlendModes is how the layer composites, specialised by appearance.
+	BlendModes []Specialized[string]
 }
 
 // Shadow is the shadow a group casts.
