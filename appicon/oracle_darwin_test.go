@@ -97,47 +97,59 @@ func TestActoolTakesASingleLayer(t *testing.T) {
 }
 
 // TestActoolTakesTheAppearanceFields covers the fields that vary by
-// appearance together, in the arrangement a shipping app uses. They have
-// nowhere else to be checked: a manifest actool ignores looks exactly like
-// one it honours.
+// appearance together, arranged the way a shipping app arranges them: one
+// group holding the specialised values and the layer they apply to. Spread
+// across two groups the same values crash actool, which is the arrangement
+// the package documentation warns about.
 func TestActoolTakesTheAppearanceFields(t *testing.T) {
-	material := 1.0
 	bundle := written(t, "Composed", Bundle{
 		Fills: []Specialized[Fill]{
 			{Value: NamedFill("system-light")},
 			{Appearance: AppearanceDark, Value: NamedFill("system-dark")},
 		},
+		Groups: []Group{{
+			BlendModes: []Specialized[string]{{Appearance: AppearanceTinted, Value: "normal"}},
+			Lighting:   "individual",
+			Specular:   true,
+			Shadow:     &Shadow{Kind: "layer-color", Opacity: 0.5},
+			Translucencies: []Specialized[Translucency]{
+				{Value: Translucency{Enabled: true, Value: 0.84}},
+				{Appearance: AppearanceTinted, Value: Translucency{Enabled: false, Value: 0.84}},
+			},
+			Layers: []Layer{{
+				Name:     "Front",
+				Image:    layer(210, color.NRGBA{R: 40, G: 70, B: 200, A: 255}),
+				Glass:    true,
+				Position: &Position{Scale: 1.24, Translation: [2]float64{0, 0}},
+				Fills: []Specialized[Fill]{
+					{Appearance: AppearanceDark, Value: NamedFill("automatic")},
+					{Appearance: AppearanceTinted, Value: GradientFill(
+						"display-p3:0.90000,0.90000,0.90000,0.83000",
+						"srgb:1.00000,1.00000,1.00000,0.41987",
+					)},
+				},
+				BlendModes: []Specialized[string]{{Appearance: AppearanceDark, Value: "lighten"}},
+			}},
+		}},
+	})
+	compiled(t, compile(t, bundle))
+}
+
+// TestActoolTakesSeveralGroups covers a stack of groups, which is how an
+// icon with a background and a mark on top is built.
+func TestActoolTakesSeveralGroups(t *testing.T) {
+	bundle := written(t, "Stacked", Bundle{
 		Groups: []Group{
 			{
-				BlendModes:    []Specialized[string]{{Appearance: AppearanceTinted, Value: "normal"}},
-				BlurMaterials: []Specialized[float64]{{Value: material}},
-				Lighting:      "individual",
-				Specular:      true,
-				Shadow:        &Shadow{Kind: "layer-color", Opacity: 0.5},
-				Translucencies: []Specialized[Translucency]{
-					{Value: Translucency{Enabled: true, Value: 0.84}},
-					{Appearance: AppearanceTinted, Value: Translucency{Enabled: false, Value: 0.84}},
-				},
-				Layers: []Layer{{
-					Name:  "Back",
-					Image: layer(210, color.NRGBA{R: 40, G: 70, B: 200, A: 255}),
-				}},
+				Layers: []Layer{{Name: "Back", Image: layer(210, color.NRGBA{R: 40, G: 70, B: 200, A: 255})}},
+				Shadow: &Shadow{Kind: ShadowNeutral, Opacity: 0.5},
 			},
 			{
 				Layers: []Layer{{
-					Name:     "Front",
-					Image:    layer(130, color.NRGBA{R: 240, G: 240, B: 250, A: 255}),
-					Glass:    true,
-					Hidden:   false,
-					Position: &Position{Scale: 1.24, Translation: [2]float64{0, -12}},
-					Fills: []Specialized[Fill]{
-						{Appearance: AppearanceDark, Value: NamedFill("automatic")},
-						{Appearance: AppearanceTinted, Value: GradientFill(
-							"display-p3:0.90000,0.90000,0.90000,0.83000",
-							"srgb:1.00000,1.00000,1.00000,0.41987",
-						)},
-					},
-					BlendModes: []Specialized[string]{{Appearance: AppearanceDark, Value: "lighten"}},
+					Name:   "Front",
+					Image:  layer(130, color.NRGBA{R: 240, G: 240, B: 250, A: 255}),
+					Glass:  true,
+					Hidden: false,
 				}},
 			},
 		},

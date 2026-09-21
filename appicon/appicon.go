@@ -13,17 +13,23 @@
 // # A crash worth knowing about
 //
 // actool from Xcode 26.6 crashes, rather than reporting a problem, on some
-// groups that specialise translucency. A group holding only a shadow and
-// translucency specialised for the default appearance and for tinted brings
-// it down with an exception from inside its own asset selection. The same
-// group compiles once it also carries lighting, a blend mode, or a
-// translucency for dark, and so does the equivalent group taken from a
-// shipping app.
+// bundles that specialise translucency for the default appearance and for
+// tinted. It falls over with an exception from inside its own asset
+// selection, naming nothing.
 //
-// The trigger is not fully characterised, so this package writes what it is
-// given and leaves the judgement to the compiler. A bundle that fails to
-// compile with an exception rather than an error is worth reshaping before
-// it is worth debugging.
+// Two arrangements are known to bring it down: a group carrying only a
+// shadow and that pair of translucencies, and a bundle spreading the pair
+// and the layer they apply to across two groups. Two are known to compile:
+// the same values gathered into one group with the layer they apply to,
+// which is how a shipping app arranges them, and the pair with a
+// translucency for dark added.
+//
+// The trigger is not characterised beyond that, and it is not simply the
+// group's own fields: a group carrying lighting and a blend mode alongside
+// the pair compiles on its own and crashes in a bundle of two groups. So
+// this package writes what it is given and leaves the judgement to the
+// compiler. A bundle that fails with an exception rather than an error is
+// worth rearranging before it is worth debugging.
 package appicon
 
 import (
