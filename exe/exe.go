@@ -26,6 +26,26 @@ var (
 	ErrMalformed = errors.New("malformed resource section")
 )
 
+// Kind is what a Windows binary is.
+type Kind int
+
+const (
+	// Program is a binary the system runs.
+	Program Kind = iota
+	// Library is a binary loaded into another, which a DLL is.
+	Library
+)
+
+func (k Kind) String() string {
+	switch k {
+	case Program:
+		return "program"
+	case Library:
+		return "library"
+	}
+	return fmt.Sprintf("unknown kind %d", int(k))
+}
+
 // Resource types, as the resource directory numbers them.
 const (
 	typeIcon      = 3

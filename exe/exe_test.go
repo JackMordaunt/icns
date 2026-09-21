@@ -20,6 +20,7 @@ import (
 const (
 	withIcons    = "testdata/icon.dll"
 	withoutIcons = "testdata/plain.dll"
+	aProgram     = "testdata/tiny.exe"
 	original     = "testdata/icon.ico"
 )
 
@@ -86,6 +87,50 @@ func TestIconsWithoutResources(t *testing.T) {
 	_, err := Icons(open(t, withoutIcons))
 	if !errors.Is(err, ErrNoIcons) {
 		t.Errorf("reading a binary with no icons returned %v, want ErrNoIcons", err)
+	}
+}
+
+// TestIdentifyReadsTheHeaderNotTheName covers telling a library from a
+// program without the file name, which is what the header is for. Both begin
+// with the same two bytes.
+func TestIdentifyReadsTheHeaderNotTheName(t *testing.T) {
+	for _, tt := range []struct {
+		path string
+		want Kind
+	}{
+		{withIcons, Library},
+		{withoutIcons, Library},
+		{aProgram, Program},
+	} {
+		t.Run(tt.path, func(t *testing.T) {
+			got, ok := Identify(open(t, tt.path))
+			if !ok {
+				t.Fatal("not recognised as a binary")
+			}
+			if got != tt.want {
+				t.Errorf("identified as %s, want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestIdentifyRefusesWhatMerelyLooksLikeOne covers the formats that share a
+// binary's first two bytes without sharing its header.
+func TestIdentifyRefusesWhatMerelyLooksLikeOne(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		data []byte
+	}{
+		{"nothing", nil},
+		{"not a binary at all", []byte("just text")},
+		{"the two bytes alone", []byte("MZ")},
+		{"a stub with no header behind it", []byte("MZ\x90\x00\x03\x00\x00\x00")},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, ok := Identify(bytes.NewReader(tt.data)); ok {
+				t.Error("recognised as a binary")
+			}
+		})
 	}
 }
 

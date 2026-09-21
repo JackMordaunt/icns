@@ -13,6 +13,22 @@ import (
 	"github.com/jackmordaunt/icns/v4/ico"
 )
 
+// Identify reports what a Windows binary is, and whether the data is one at
+// all. The two bytes such a file begins with are shared with the formats it
+// succeeded, so the header decides rather than the magic, and whether it is a
+// library is what the header says rather than what the name suggests.
+func Identify(r io.ReaderAt) (Kind, bool) {
+	file, err := pe.NewFile(r)
+	if err != nil {
+		return 0, false
+	}
+	defer file.Close()
+	if file.FileHeader.Characteristics&pe.IMAGE_FILE_DLL != 0 {
+		return Library, true
+	}
+	return Program, true
+}
+
 // Icons returns the icons a Windows binary carries, lowest ordinal first,
 // which is the order Explorer draws them in.
 func Icons(r io.ReaderAt) ([]Group, error) {
