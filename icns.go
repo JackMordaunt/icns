@@ -122,9 +122,7 @@ func newIconSet(images map[Slot]image.Image, source image.Image, interp Interpol
 	icons := make([]*Icon, len(plan))
 	work := sync.WaitGroup{}
 	for i, osType := range plan {
-		work.Add(1)
-		go func() {
-			defer work.Done()
+		work.Go(func() {
 			art := source
 			if supplied, ok := images[osType.slot]; ok {
 				art = supplied
@@ -133,7 +131,7 @@ func newIconSet(images map[Slot]image.Image, source image.Image, interp Interpol
 				Type:  osType,
 				Image: resample.Square(art, osType.Size, interp),
 			}
-		}()
+		})
 	}
 	work.Wait()
 	iconSet := &IconSet{
