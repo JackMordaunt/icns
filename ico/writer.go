@@ -52,30 +52,22 @@ func (enc *Encoder) write(images map[uint]image.Image, source image.Image) error
 		return ErrImageTooSmall{image: source, need: smallest}
 	}
 
-	out := make([]byte, 0, directorySize+entrySize*len(icons))
-	out = binary.LittleEndian.AppendUint16(out, 0) // Reserved.
-	out = binary.LittleEndian.AppendUint16(out, 1) // An icon, not a cursor.
-	out = binary.LittleEndian.AppendUint16(out, uint16(len(icons)))
-	offset := directorySize + entrySize*len(icons)
+	stored := make([]Stored, 0, len(icons))
 	for _, ic := range icons {
-		// 256 does not fit in a byte and is written as zero.
-		side := byte(ic.size)
-		out = append(out, side, side, 0, 0)
-		out = binary.LittleEndian.AppendUint16(out, 1)  // Colour planes.
-		out = binary.LittleEndian.AppendUint16(out, 32) // Bits per pixel.
-		out = binary.LittleEndian.AppendUint32(out, uint32(len(ic.data)))
-		out = binary.LittleEndian.AppendUint32(out, uint32(offset))
-		offset += len(ic.data)
+		stored = append(stored, Stored{
+			Width:  int(ic.size),
+			Height: int(ic.size),
+			Planes: 1,
+			Bits:   32,
+			Data:   ic.data,
+		})
 	}
-	if _, err := enc.Wr.Write(out); err != nil {
+	out, err := Assemble(stored)
+	if err != nil {
 		return err
 	}
-	for _, ic := range icons {
-		if _, err := enc.Wr.Write(ic.data); err != nil {
-			return err
-		}
-	}
-	return nil
+	_, err = enc.Wr.Write(out)
+	return err
 }
 
 // encodeIcon stores one icon, as a PNG at the largest size and as a bitmap

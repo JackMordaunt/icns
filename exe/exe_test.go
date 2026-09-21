@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/jackmordaunt/icns/v4/ico"
 )
 
 // The fixtures are built by mingw's windres and linker from an ico this
@@ -197,18 +199,22 @@ func TestAssembleRejectsAGroupItCannotComplete(t *testing.T) {
 // TestAssembleTakesTheLengthFromTheResource keeps a directory that misstates
 // a size from producing an ico nothing can read.
 func TestAssembleTakesTheLengthFromTheResource(t *testing.T) {
-	// The directory above says every image is 16 bytes; this one is not.
+	// The directory above says every image is 16 bytes; this one is not, so
+	// a file built from what it claims would hand back the wrong pixels.
 	pixels := bytes.Repeat([]byte{0xAB}, 64)
 	got, err := assemble(group(1, 3), []leaf{{id: 3, data: pixels}})
 	if err != nil {
 		t.Fatalf("assembling: %v", err)
 	}
-	data := got.ICO()
-	row := data[groupHeaderSize:]
-	if size := binary.LittleEndian.Uint32(row[8:12]); int(size) != len(pixels) {
-		t.Errorf("row gives %d bytes, want the %d the resource holds", size, len(pixels))
+	d, err := ico.NewDecoder(bytes.NewReader(got.ICO()))
+	if err != nil {
+		t.Fatalf("reading what was assembled: %v", err)
 	}
-	if offset := binary.LittleEndian.Uint32(row[12:16]); int(offset) != groupHeaderSize+icoEntrySize {
-		t.Errorf("row points at %d, want the byte after the directory", offset)
+	icons := d.Icons()
+	if len(icons) != 1 {
+		t.Fatalf("found %d icons, want 1", len(icons))
+	}
+	if payload := icons[0].Payload(); !bytes.Equal(payload, pixels) {
+		t.Errorf("icon holds %d bytes, want the %d the resource holds", len(payload), len(pixels))
 	}
 }

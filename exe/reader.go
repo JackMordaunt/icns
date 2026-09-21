@@ -13,6 +13,15 @@ import (
 	"github.com/jackmordaunt/icns/v4/ico"
 )
 
+// side reads a dimension from a directory row, where the largest icon does
+// not fit in a byte and is written as zero.
+func side(stored byte) int {
+	if stored == 0 {
+		return 256
+	}
+	return int(stored)
+}
+
 // Identify reports what a Windows binary is, and whether the data is one at
 // all. The two bytes such a file begins with are shared with the formats it
 // succeeded, so the header decides rather than the magic, and whether it is a
@@ -223,14 +232,9 @@ func assemble(group leaf, images []leaf) (Group, error) {
 		return Group{}, fmt.Errorf("%w: icon group %d lists %d icons it does not hold", ErrMalformed, group.id, count)
 	}
 	var (
-		rows   = make([]byte, 0, groupHeaderSize+count*icoEntrySize)
-		body   []byte
+		stored = make([]ico.Stored, 0, count)
 		sizes  []int
-		offset = groupHeaderSize + count*icoEntrySize
 	)
-	rows = binary.LittleEndian.AppendUint16(rows, 0)
-	rows = binary.LittleEndian.AppendUint16(rows, 1)
-	rows = binary.LittleEndian.AppendUint16(rows, uint16(count))
 	for i := range count {
 		row := group.data[groupHeaderSize+i*groupEntrySize:]
 		id := binary.LittleEndian.Uint16(row[12:14])
@@ -238,25 +242,28 @@ func assemble(group leaf, images []leaf) (Group, error) {
 		if index < 0 {
 			return Group{}, fmt.Errorf("%w: icon group %d names image %d, which is not present", ErrMalformed, group.id, id)
 		}
-		pixels := images[index].data
-		// The two rows agree up to the length of the image, which is taken
-		// from the resource itself rather than from the field that names it.
-		rows = append(rows, row[:8]...)
-		rows = binary.LittleEndian.AppendUint32(rows, uint32(len(pixels)))
-		rows = binary.LittleEndian.AppendUint32(rows, uint32(offset))
-		body = append(body, pixels...)
-		offset += len(pixels)
-
-		side := int(row[0])
-		if side == 0 {
-			side = 256
+		// A group row says everything an ico row says except where the image
+		// lies, which it answers with a resource instead. The length is taken
+		// from the resource rather than from the field that names it.
+		icon := ico.Stored{
+			Width:   side(row[0]),
+			Height:  side(row[1]),
+			Colours: row[2],
+			Planes:  binary.LittleEndian.Uint16(row[4:6]),
+			Bits:    binary.LittleEndian.Uint16(row[6:8]),
+			Data:    images[index].data,
 		}
-		sizes = append(sizes, side)
+		stored = append(stored, icon)
+		sizes = append(sizes, icon.Width)
+	}
+	file, err := ico.Assemble(stored)
+	if err != nil {
+		return Group{}, fmt.Errorf("icon group %d: %w", group.id, err)
 	}
 	slices.SortStableFunc(sizes, func(a, b int) int { return cmp.Compare(b, a) })
 	return Group{
 		ID:    group.id,
 		Sizes: sizes,
-		ico:   append(rows, body...),
+		ico:   file,
 	}, nil
 }

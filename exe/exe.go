@@ -69,8 +69,6 @@ const (
 	// groupEntrySize is one icon's row in a group icon directory. It differs
 	// from the ico row only in naming a resource rather than an offset.
 	groupEntrySize = 14
-	// icoEntrySize is one icon's row in an ico directory.
-	icoEntrySize = 16
 )
 
 // Group is one icon a binary carries, at every size it holds.
