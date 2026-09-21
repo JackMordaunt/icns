@@ -145,7 +145,7 @@ jobs:
           GOWORK: "off"
 
   checks:
-    name: formatting, vet and vulnerabilities
+    name: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -156,18 +156,18 @@ jobs:
             go.sum
             cmd/preview/go.sum
             cmd/shell-extension/go.sum
-      - name: gofmt
+      # The script run before a change is finished, so a change that passes
+      # locally passes here for the same reasons rather than by coincidence.
+      # Formatting, vet, the analysers and the tests are all inside it.
+      - name: check
         run: |
-          unformatted="$(gofmt -l .)"
-          if [ -n "$unformatted" ]; then
-            echo "not gofmt clean:"
-            echo "$unformatted"
-            exit 1
+          status=0
+          ./check.sh 2>&1 | tee check.log || status=$?
+          if [ "$status" -ne 0 ]; then
+            grep -E '\.go:[0-9]+|\^ ' check.log | head -40 |
+              while IFS= read -r line; do echo "::error::$line"; done || true
           fi
-      # Only the library, which builds anywhere. The command modules are
-      # vetted in their own jobs: preview needs a desktop toolchain that Linux
-      # runners lack, and the shell extension has no files outside Windows.
-      - run: go vet ./...
+          exit "$status"
       - name: govulncheck
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
