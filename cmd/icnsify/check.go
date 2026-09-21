@@ -22,7 +22,7 @@ func check(path string, r io.Reader) error {
 	}
 	var lines []string
 	serious := 0
-	switch container(data, extension(filepath.Ext(path))) {
+	switch containerSniff(data, extension(filepath.Ext(path))) {
 	case ".icns":
 		problems, err := icns.Validate(bytes.NewReader(data))
 		if err != nil {
@@ -76,18 +76,20 @@ func check(path string, r io.Reader) error {
 	return nil
 }
 
-// container names what the data holds, by the bytes it begins with and
-// failing that by the extension it was given. A Windows binary is named by
-// its extension, since the icons are inside it rather than at its start.
-func container(data []byte, ext string) string {
+// containerSniff names what the data holds, by reading it rather than by
+// trusting the name. A Windows binary is identified from its header, which
+// says whether it is a library; the extension is consulted only for a file
+// whose bytes say nothing.
+func containerSniff(data []byte, ext string) string {
 	switch {
 	case len(data) >= 4 && string(data[:4]) == "icns":
 		return ".icns"
 	case len(data) >= 4 && string(data[:4]) == "\x00\x00\x01\x00":
 		return ".ico"
-	case len(data) >= 2 && string(data[:2]) == "MZ":
-		if binaries[ext] {
-			return ext
+	}
+	if kind, ok := exe.Identify(bytes.NewReader(data)); ok {
+		if kind == exe.Library {
+			return ".dll"
 		}
 		return ".exe"
 	}

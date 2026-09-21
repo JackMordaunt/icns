@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // Stamped by goreleaser at build time, through the linker.
@@ -16,17 +17,19 @@ var (
 
 // buildInfo renders the version and whatever else the build stamped.
 func buildInfo() string {
-	out := "icnsify " + version
+	var out strings.Builder
+	out.WriteString("icnsify ")
+	out.WriteString(version)
 	for _, part := range []struct{ label, value string }{
 		{"commit", commit},
 		{"built", date},
 		{"by", builtBy},
 	} {
 		if part.value != "" {
-			out += fmt.Sprintf(", %s %s", part.label, part.value)
+			fmt.Fprintf(&out, ", %s %s", part.label, part.value)
 		}
 	}
-	return out
+	return out.String()
 }
 
 // option records a flag registered under both a long and a short name, so

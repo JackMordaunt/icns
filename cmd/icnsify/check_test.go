@@ -16,8 +16,8 @@ import (
 
 func art(side int) image.Image {
 	img := image.NewNRGBA(image.Rect(0, 0, side, side))
-	for y := 0; y < side; y++ {
-		for x := 0; x < side; x++ {
+	for y := range side {
+		for x := range side {
 			img.SetNRGBA(x, y, color.NRGBA{
 				R: uint8(x * 255 / side),
 				G: uint8(y * 255 / side),
@@ -132,16 +132,26 @@ func TestContainerReadsTheBytesFirst(t *testing.T) {
 		{"ico named icns", encoded(t, func(b *bytes.Buffer) error { return ico.Encode(b, art(64)) }), ".icns", ".ico"},
 		{"unknown bytes, known extension", []byte("rubbish"), ".icns", ".icns"},
 		{"unknown bytes, plain extension", []byte("rubbish"), ".png", ""},
-		{"a binary named exe", []byte("MZ\x90\x00"), ".exe", ".exe"},
-		{"a binary named dll", []byte("MZ\x90\x00"), ".dll", ".dll"},
-		{"a binary named nothing", []byte("MZ\x90\x00"), "", ".exe"},
+		{"a library, whatever it is called", fixture(t, "icon.dll"), ".png", ".dll"},
+		{"a program, whatever it is called", fixture(t, "tiny.exe"), ".dll", ".exe"},
+		{"the two bytes alone are not a binary", []byte("MZ\x90\x00"), "", ""},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := container(tt.data, tt.ext); got != tt.want {
+			if got := containerSniff(tt.data, tt.ext); got != tt.want {
 				t.Errorf("container = %q, want %q", got, tt.want)
 			}
 		})
 	}
+}
+
+// fixture reads one of the exe package's binaries, which mingw built.
+func fixture(t *testing.T, name string) []byte {
+	t.Helper()
+	data, err := os.ReadFile("../../exe/testdata/" + name)
+	if err != nil {
+		t.Fatalf("reading fixture: %v", err)
+	}
+	return data
 }
 
 // TestCheckReadsABinary uses the exe package's fixture, a DLL whose resource
