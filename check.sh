@@ -55,8 +55,13 @@ formatting() {
 # An analyser that reports through its output rather than its status needs
 # its output turned into one.
 analyse() {
+	local tool=$1
+	# Fetching the tool writes to the stream its findings arrive on, so that
+	# happens first, outside what is captured. A cold cache would otherwise
+	# read as a finding for every analyser.
+	go run "$tool" -V > /dev/null 2>&1 || true
 	local output
-	output="$(go run "$@" ./... 2>&1)" || true
+	output="$(go run "$tool" ./... 2>&1)" || true
 	if [[ -n $output ]]; then
 		echo "$output"
 		return 1

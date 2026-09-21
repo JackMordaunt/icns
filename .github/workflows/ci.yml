@@ -160,6 +160,9 @@ jobs:
       # locally passes here for the same reasons rather than by coincidence.
       # Formatting, vet, the analysers and the tests are all inside it.
       - name: check
+        # Without pipefail the pipeline below reports tee's status, so a
+        # failing check would leave the job green.
+        shell: bash
         run: |
           status=0
           ./check.sh 2>&1 | tee check.log || status=$?
