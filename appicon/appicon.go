@@ -10,26 +10,13 @@
 // Nothing here compiles a bundle. That is actool's work, and it runs only on
 // macOS; a bundle written by this package is the input it takes.
 //
-// # A crash worth knowing about
+// # How actool reports a manifest it cannot read
 //
-// actool from Xcode 26.6 crashes, rather than reporting a problem, on some
-// bundles that specialise translucency for the default appearance and for
-// tinted. It falls over with an exception from inside its own asset
-// selection, naming nothing.
-//
-// Two arrangements are known to bring it down: a group carrying only a
-// shadow and that pair of translucencies, and a bundle spreading the pair
-// and the layer they apply to across two groups. Two are known to compile:
-// the same values gathered into one group with the layer they apply to,
-// which is how a shipping app arranges them, and the pair with a
-// translucency for dark added.
-//
-// The trigger is not characterised beyond that, and it is not simply the
-// group's own fields: a group carrying lighting and a blend mode alongside
-// the pair compiles on its own and crashes in a bundle of two groups. So
-// this package writes what it is given and leaves the judgement to the
-// compiler. A bundle that fails with an exception rather than an error is
-// worth rearranging before it is worth debugging.
+// It does not. Given a value it cannot make sense of, actool from Xcode 26.6
+// falls over with an exception from inside its own asset selection, naming
+// neither the field nor the file. A manifest that is merely well formed JSON
+// proves nothing, which is why this package is held against the tool rather
+// than against a schema.
 package appicon
 
 import (
@@ -117,16 +104,16 @@ type Layer struct {
 type Shadow struct {
 	// Kind is how the shadow takes its colour, such as "neutral" or
 	// "layer-color".
-	Kind string
+	Kind string `json:"kind"`
 	// Opacity is how dark it is, from 0 to 1.
-	Opacity float64
+	Opacity float64 `json:"opacity"`
 }
 
 // Translucency is how far a group lets what is behind it through.
 type Translucency struct {
-	Enabled bool
+	Enabled bool `json:"enabled"`
 	// Value is the amount, from 0 to 1.
-	Value float64
+	Value float64 `json:"value"`
 }
 
 // Defaults written where a bundle leaves a choice open.

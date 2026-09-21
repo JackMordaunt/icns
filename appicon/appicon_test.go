@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -269,6 +270,64 @@ func TestHiddenIsWrittenOnlyWhenSet(t *testing.T) {
 	layer = decode(t, files)["groups"].([]any)[0].(map[string]any)["layers"].([]any)[0].(map[string]any)
 	if layer["hidden"] != true {
 		t.Errorf("hidden is %v, want true", layer["hidden"])
+	}
+}
+
+// TestEveryKeyIsTheManifestSpelling walks the whole manifest for a key
+// spelled the way Go spells a field rather than the way the manifest does. A
+// value marshalled through a type that carries no tags looks right until
+// actool reads it, and actool does not say which key it wanted.
+func TestEveryKeyIsTheManifestSpelling(t *testing.T) {
+	material := 1.0
+	b := Bundle{
+		Fills: []Specialized[Fill]{{Value: NamedFill("system-light")}},
+		Groups: []Group{{
+			BlendModes:    []Specialized[string]{{Appearance: AppearanceTinted, Value: "normal"}},
+			BlurMaterials: []Specialized[float64]{{Value: material}},
+			Lighting:      "individual",
+			Specular:      true,
+			Shadow:        &Shadow{Kind: "layer-color", Opacity: 0.5},
+			Translucencies: []Specialized[Translucency]{
+				{Value: Translucency{Enabled: true, Value: 0.84}},
+				{Appearance: AppearanceDark, Value: Translucency{Enabled: false, Value: 0.5}},
+			},
+			Layers: []Layer{{
+				Name: "One", Image: art(16), Glass: true, Hidden: true,
+				Position:   &Position{Scale: 1.24, Translation: [2]float64{0, -12}},
+				Fills:      []Specialized[Fill]{{Value: GradientFill("srgb:1,1,1,1")}},
+				BlendModes: []Specialized[string]{{Appearance: AppearanceDark, Value: "lighten"}},
+			}},
+		}},
+	}
+	// The plain forms travel a different path from the specialised ones, so
+	// both are walked.
+	plain := Bundle{Groups: []Group{{
+		Layers:       []Layer{{Name: "One", Image: art(16)}},
+		Shadow:       &Shadow{Kind: ShadowNeutral, Opacity: 0.5},
+		Translucency: &Translucency{Enabled: true, Value: 0.5},
+	}}}
+	for _, bundle := range []Bundle{b, plain} {
+		files, err := bundle.Files()
+		if err != nil {
+			t.Fatalf("rendering: %v", err)
+		}
+		var walk func(any, string)
+		walk = func(node any, path string) {
+			switch v := node.(type) {
+			case map[string]any:
+				for key, child := range v {
+					if key != "" && key[0] >= 'A' && key[0] <= 'Z' {
+						t.Errorf("%s.%s is spelled the way Go spells a field", path, key)
+					}
+					walk(child, path+"."+key)
+				}
+			case []any:
+				for i, child := range v {
+					walk(child, fmt.Sprintf("%s[%d]", path, i))
+				}
+			}
+		}
+		walk(any(decode(t, files)), "")
 	}
 }
 

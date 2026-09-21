@@ -132,10 +132,10 @@ func (b Bundle) document() (icon, [][]string, error) {
 			if kind == "" {
 				kind = ShadowNeutral
 			}
-			out.Shadow = &jsonShadow{Kind: kind, Opacity: s.Opacity}
+			out.Shadow = &Shadow{Kind: kind, Opacity: s.Opacity}
 		}
 		if t := group.Translucency; t != nil && len(group.Translucencies) == 0 {
-			out.Translucency = &jsonTranslucency{Enabled: t.Enabled, Value: t.Value}
+			out.Translucency = t
 		}
 		doc.Groups = append(doc.Groups, out)
 	}
@@ -180,9 +180,9 @@ type jsonGroup struct {
 	BlurMaterials  []Specialized[float64]      `json:"blur-material-specializations,omitempty"`
 	Layers         []jsonLayer                 `json:"layers"`
 	Lighting       string                      `json:"lighting,omitempty"`
-	Shadow         *jsonShadow                 `json:"shadow,omitempty"`
+	Shadow         *Shadow                     `json:"shadow,omitempty"`
 	Specular       bool                        `json:"specular,omitempty"`
-	Translucency   *jsonTranslucency           `json:"translucency,omitempty"`
+	Translucency   *Translucency               `json:"translucency,omitempty"`
 	Translucencies []Specialized[Translucency] `json:"translucency-specializations,omitempty"`
 }
 
@@ -194,14 +194,4 @@ type jsonLayer struct {
 	ImageName  string                `json:"image-name"`
 	Name       string                `json:"name"`
 	Position   *Position             `json:"position,omitempty"`
-}
-
-type jsonShadow struct {
-	Kind    string  `json:"kind"`
-	Opacity float64 `json:"opacity"`
-}
-
-type jsonTranslucency struct {
-	Enabled bool    `json:"enabled"`
-	Value   float64 `json:"value"`
 }
