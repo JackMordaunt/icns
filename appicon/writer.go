@@ -11,11 +11,11 @@ import (
 	"strings"
 )
 
-// manifest is the file name the bundle's directory holds beside its assets.
-const manifest = "icon.json"
+// ManifestName is the file name the bundle's directory holds beside its assets.
+const ManifestName = "icon.json"
 
-// assets is the directory within the bundle that holds the layer images.
-const assets = "Assets"
+// AssetsName is the directory within the bundle that holds the layer images.
+const AssetsName = "Assets"
 
 // Files renders the bundle as the files its directory holds, keyed by their
 // path within it. The manifest is at icon.json and every layer's image is
@@ -29,14 +29,14 @@ func (b Bundle) Files() (map[string][]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("writing the manifest: %w", err)
 	}
-	out := map[string][]byte{manifest: append(encoded, '\n')}
+	out := map[string][]byte{ManifestName: append(encoded, '\n')}
 	for i, group := range b.Groups {
 		for j, layer := range group.Layers {
 			buf := bytes.NewBuffer(nil)
 			if err := png.Encode(buf, layer.Image); err != nil {
 				return nil, fmt.Errorf("writing layer %s: %w", names[i][j], err)
 			}
-			out[path.Join(assets, names[i][j])] = buf.Bytes()
+			out[path.Join(AssetsName, names[i][j])] = buf.Bytes()
 		}
 	}
 	return out, nil
@@ -50,7 +50,7 @@ func (b Bundle) Write(dir string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Join(dir, assets), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, AssetsName), 0o755); err != nil {
 		return fmt.Errorf("preparing the bundle: %w", err)
 	}
 	for name, data := range files {
@@ -64,15 +64,15 @@ func (b Bundle) Write(dir string) error {
 
 // document builds the manifest and the file name chosen for every layer,
 // which the caller needs to write the images where the manifest says.
-func (b Bundle) document() (icon, [][]string, error) {
+func (b Bundle) document() (manifest, [][]string, error) {
 	var layers int
 	for _, group := range b.Groups {
 		layers += len(group.Layers)
 	}
 	if layers == 0 {
-		return icon{}, nil, ErrNoLayers
+		return manifest{}, nil, ErrNoLayers
 	}
-	doc := icon{
+	doc := manifest{
 		Fill:      b.Fill,
 		Fills:     b.Fills,
 		Platforms: platforms{Squares: b.Platforms},
@@ -107,12 +107,12 @@ func (b Bundle) document() (icon, [][]string, error) {
 		}
 		for j, layer := range group.Layers {
 			if layer.Image == nil {
-				return icon{}, nil, fmt.Errorf("layer %q has no image", layer.Name)
+				return manifest{}, nil, fmt.Errorf("layer %q has no image", layer.Name)
 			}
 			n++
 			name := layerName(layer.Name, n)
 			if taken[name] {
-				return icon{}, nil, fmt.Errorf("%w: %q", ErrDuplicateLayer, name)
+				return manifest{}, nil, fmt.Errorf("%w: %q", ErrDuplicateLayer, name)
 			}
 			taken[name] = true
 			file := name + ".png"
@@ -163,7 +163,7 @@ func layerName(name string, position int) string {
 
 // The manifest's shape. The names are the ones Icon Composer writes, which
 // is what actool reads.
-type icon struct {
+type manifest struct {
 	Fill      string              `json:"fill,omitempty"`
 	Fills     []Specialized[Fill] `json:"fill-specializations,omitempty"`
 	Groups    []jsonGroup         `json:"groups"`
