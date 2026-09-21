@@ -11,7 +11,7 @@ import (
 // colour table when the pixels are indexed, the pixels bottom up, and a one
 // bit mask. The stored height covers the pixels and the mask together, so it
 // is twice the height of the icon.
-func decodeBMP(data []byte, width, height int) (image.Image, error) {
+func decodeBMP(data []byte) (image.Image, error) {
 	if len(data) < headerSize {
 		return nil, fmt.Errorf("%w: holds %d bytes, too few for a bitmap header", ErrMalformed, len(data))
 	}

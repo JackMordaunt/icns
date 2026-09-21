@@ -74,7 +74,7 @@ func (e Entry) Decode() (image.Image, error) {
 		}
 		return img, nil
 	}
-	img, err := decodeBMP(e.data, e.Width, e.Height)
+	img, err := decodeBMP(e.data)
 	if err != nil {
 		return nil, fmt.Errorf("decoding %s icon: %w", e, err)
 	}
