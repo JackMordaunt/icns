@@ -49,7 +49,10 @@ func run() error {
 		outputPath   string
 		outputFormat string
 		resize       int
+		checkOnly    bool
+		showVersion  bool
 	)
+
 	stringFlag(&inputPath, "input", "i", "",
 		"Input image: artwork to pack, an icon file to unpack, or an iconset directory.")
 	stringFlag(&outputPath, "output", "o", "",
@@ -58,13 +61,17 @@ func run() error {
 		"Output format: icns, icon, ico, png or jpg. Defaults from the output path.")
 	intFlag(&resize, "resize", "r", 5,
 		"Quality of resize algorithm, 0 to 5 from fastest to slowest.")
-	var checkOnly bool
 	boolFlag(&checkOnly, "check", "c",
 		"Report what the platforms will make of an icon file, and exit.")
-	var showVersion bool
 	boolFlag(&showVersion, "version", "v", "Print the version and exit.")
+
 	flag.Usage = usage
 	flag.Parse()
+
+	// Allow positional.
+	if inputPath == "" {
+		inputPath = flag.Arg(0)
+	}
 
 	if showVersion {
 		fmt.Println(buildInfo())
@@ -75,6 +82,7 @@ func run() error {
 		input  io.Reader
 		output io.Writer
 	)
+
 	// An explicit --input wins; otherwise a non-terminal stdin means we are
 	// part of a pipeline and both paths are ignored.
 	piping := false
@@ -84,6 +92,7 @@ func run() error {
 			return err
 		}
 	}
+
 	// Checking reads the input and writes a report, so it runs before any
 	// output path is resolved or created.
 	if checkOnly {
@@ -104,20 +113,21 @@ func run() error {
 	if outputFormat != "" && !writable(extension(outputFormat)) {
 		return fmt.Errorf("cannot write %s: choose from icns, icon, ico, png or jpg", outputFormat)
 	}
-	in, out, algorithm := sanitiseInputs(inputPath, outputPath, outputFormat, resize)
+
+	inputPath, outputPath, algorithm := sanitiseInputs(inputPath, outputPath, outputFormat, resize)
 	if piping {
 		input, output = os.Stdin, os.Stdout
 	} else {
-		if in == "" {
+		if inputPath == "" {
 			usage()
 			return errUsage
 		}
 		// A directory is an iconset: artwork per slot rather than one image
 		// to resize for every size.
-		if info, err := os.Stat(in); err == nil && info.IsDir() {
-			return encodeIconSet(in, out, target(outputFormat, out, false, ""), algorithm)
+		if info, err := os.Stat(inputPath); err == nil && info.IsDir() {
+			return encodeIconSet(inputPath, outputPath, target(outputFormat, outputPath, false, ""), algorithm)
 		}
-		sourcef, err := os.Open(in)
+		sourcef, err := os.Open(inputPath)
 		if err != nil {
 			return fmt.Errorf("opening source image: %w", err)
 		}
@@ -125,11 +135,11 @@ func run() error {
 		input = sourcef
 		// A bundle is a directory the encoder builds itself, so there is no
 		// file to open for it.
-		if !bundles[target(outputFormat, out, false, extension(filepath.Ext(in)))] {
-			if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
+		if !bundles[target(outputFormat, outputPath, false, extension(filepath.Ext(inputPath)))] {
+			if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
 				return fmt.Errorf("preparing output directory: %w", err)
 			}
-			outputf, err := os.Create(out)
+			outputf, err := os.Create(outputPath)
 			if err != nil {
 				return fmt.Errorf("creating output file: %w", err)
 			}
@@ -137,36 +147,19 @@ func run() error {
 			output = outputf
 		}
 	}
-	source, err := io.ReadAll(input)
+
+	format, img, err := decode(input)
 	if err != nil {
-		return fmt.Errorf("reading input: %w", err)
-	}
-	var (
-		img    image.Image
-		format string
-	)
-	if kind := container(source, extension(filepath.Ext(in))); kind != "" {
-		if err := describe(kind, bytes.NewReader(source)); err != nil {
-			return fmt.Errorf("probing file: %w", err)
-		}
-	}
-	// A Windows binary carries icons rather than being one, so the artwork
-	// comes out of its resources instead of through an image decoder.
-	if binaries[container(source, extension(filepath.Ext(in)))] {
-		format = ".exe"
-		if img, err = exe.Decode(bytes.NewReader(source)); err != nil {
-			return fmt.Errorf("reading icons from the binary: %w", err)
-		}
-	} else if img, format, err = image.Decode(bytes.NewReader(source)); err != nil {
 		return fmt.Errorf("decoding input: %w", err)
 	}
-	switch kind := target(outputFormat, out, piping, format); kind {
+
+	switch kind := target(outputFormat, outputPath, piping, format); kind {
 	case ".icon":
 		if piping {
 			return errors.New("a .icon is a directory, so it cannot be written to a pipe")
 		}
-		name := strings.TrimSuffix(filepath.Base(out), filepath.Ext(out))
-		if err := appicon.New(img, name).Write(out); err != nil {
+		name := strings.TrimSuffix(filepath.Base(outputPath), filepath.Ext(outputPath))
+		if err := appicon.New(img, name).Write(outputPath); err != nil {
 			return fmt.Errorf("writing icon bundle: %w", err)
 		}
 	case ".icns":
@@ -182,7 +175,41 @@ func run() error {
 			return fmt.Errorf("encoding %s: %w", kind, err)
 		}
 	}
+
 	return nil
+}
+
+// decode the input data into an image, noting the format.
+//
+// A Windows binary carries icons rather than being one, so the artwork
+// comes out of its resources instead of through an image decoder.
+func decode(input io.Reader) (format string, img image.Image, err error) {
+	source, err := io.ReadAll(input)
+	if err != nil {
+		return "", nil, fmt.Errorf("reading: %w", err)
+	}
+
+	// An icns, an ico and a Windows binary each say what they are in their
+	// first bytes, so the name the input arrived under decides nothing.
+	kind := containerSniff(source, "")
+	if kind != "" {
+		if err := describe(kind, bytes.NewReader(source)); err != nil {
+			return "", nil, fmt.Errorf("probing file: %w", err)
+		}
+	}
+
+	if binaries[kind] {
+		if img, err = exe.Decode(bytes.NewReader(source)); err != nil {
+			return "", nil, fmt.Errorf("reading icons from the binary: %w", err)
+		}
+		return kind, img, nil
+	}
+
+	if img, format, err = image.Decode(bytes.NewReader(source)); err != nil {
+		return "", nil, fmt.Errorf("decoding image: %w", err)
+	}
+
+	return format, img, nil
 }
 
 // describe logs the icons a container holds.
