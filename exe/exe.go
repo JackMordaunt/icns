@@ -46,7 +46,11 @@ func (k Kind) String() string {
 	return fmt.Sprintf("unknown kind %d", int(k))
 }
 
-// Resource types, as the resource directory numbers them.
+// Resource types, as the resource directory numbers them. Windows knows them
+// as RT_ICON and RT_GROUP_ICON; a file carries only the numbers. The two are
+// not adjacent because a group is numbered eleven above the type it groups,
+// the offset winuser.h calls DIFFERENCE, which also turns RT_CURSOR into
+// RT_GROUP_CURSOR.
 const (
 	typeIcon      = 3
 	typeIconGroup = 14
