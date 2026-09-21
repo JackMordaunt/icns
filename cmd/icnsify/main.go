@@ -191,7 +191,7 @@ func decode(input io.Reader) (format string, img image.Image, err error) {
 
 	// An icns, an ico and a Windows binary each say what they are in their
 	// first bytes, so the name the input arrived under decides nothing.
-	kind := containerSniff(source, "")
+	kind := containerSniff(source)
 	if kind != "" {
 		if err := describe(kind, bytes.NewReader(source)); err != nil {
 			return "", nil, fmt.Errorf("probing file: %w", err)

@@ -80,7 +80,7 @@ func check(path string, r io.Reader) error {
 // trusting the name. A Windows binary is identified from its header, which
 // says whether it is a library; the extension is consulted only for a file
 // whose bytes say nothing.
-func containerSniff(data []byte, ext string) string {
+func containerSniff(data []byte) string {
 	switch {
 	case len(data) >= 4 && string(data[:4]) == "icns":
 		return ".icns"
@@ -92,9 +92,6 @@ func containerSniff(data []byte, ext string) string {
 			return ".dll"
 		}
 		return ".exe"
-	}
-	if containers[ext] {
-		return ext
 	}
 	return ""
 }
