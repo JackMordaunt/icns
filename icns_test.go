@@ -51,6 +51,18 @@ func TestDecode(t *testing.T) {
 // TestRoundTrip checks that an image of an exact icon size survives
 // encode(decode(img)) pixel for pixel: no resampling happens for that size
 // and PNG is lossless.
+// TestMagicIsWhatWeWrite ties the constant to the file rather than to
+// itself, so a change to either is caught by the other.
+func TestMagicIsWhatWeWrite(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Encode(&buf, gradient(64)); err != nil {
+		t.Fatalf("encoding: %v", err)
+	}
+	if got := buf.Bytes(); !bytes.HasPrefix(got, []byte(Magic)) {
+		t.Errorf("file begins %q, want %q", got[:4], Magic)
+	}
+}
+
 func TestRoundTrip(t *testing.T) {
 	t.Parallel()
 	src := gradient(128)

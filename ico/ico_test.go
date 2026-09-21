@@ -128,6 +128,18 @@ func TestDirectory(t *testing.T) {
 
 // TestRoundTrip checks that an image at an exact icon size comes back
 // unchanged: nothing is resampled and a 32 bit bitmap is lossless.
+// TestMagicIsWhatWeWrite ties the constant to the file rather than to
+// itself, so a change to either is caught by the other.
+func TestMagicIsWhatWeWrite(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Encode(&buf, gradient(64)); err != nil {
+		t.Fatalf("encoding: %v", err)
+	}
+	if got := buf.Bytes(); !bytes.HasPrefix(got, []byte(Magic)) {
+		t.Errorf("file begins %q, want %q", got[:4], Magic)
+	}
+}
+
 func TestRoundTrip(t *testing.T) {
 	t.Parallel()
 	src := gradient(64)

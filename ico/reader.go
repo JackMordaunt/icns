@@ -189,5 +189,5 @@ func DecodeConfig(r io.Reader) (image.Config, error) {
 }
 
 func init() {
-	image.RegisterFormat("ico", "\x00\x00\x01\x00", Decode, DecodeConfig)
+	image.RegisterFormat("ico", Magic, Decode, DecodeConfig)
 }

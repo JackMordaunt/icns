@@ -64,6 +64,10 @@ func (err ErrImageTooSmall) Error() string {
 	return fmt.Sprintf("image is too small: %dx%d, need at least %dx%d", b.Dx(), b.Dy(), err.need, err.need)
 }
 
+// Magic is the four bytes an ico file begins with: two reserved zeroes, then
+// the kind, which is 1 for an icon rather than a cursor.
+const Magic = "\x00\x00\x01\x00"
+
 // Format is how an icon's pixels are stored inside the file.
 type Format int
 

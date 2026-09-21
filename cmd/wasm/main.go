@@ -114,7 +114,7 @@ func validate(_ js.Value, args []js.Value) (out any) {
 		findings []finding
 	)
 	switch {
-	case bytes.HasPrefix(src, []byte("icns")):
+	case bytes.HasPrefix(src, []byte(icns.Magic)):
 		problems, err := icns.Validate(bytes.NewReader(src))
 		if err != nil {
 			return failure(err)
@@ -122,7 +122,7 @@ func validate(_ js.Value, args []js.Value) (out any) {
 		for _, p := range problems {
 			findings = append(findings, finding{p.Severity.String(), p.Icon, p.Message})
 		}
-	case bytes.HasPrefix(src, []byte{0x00, 0x00, 0x01, 0x00}):
+	case bytes.HasPrefix(src, []byte(ico.Magic)):
 		problems, err := ico.Validate(bytes.NewReader(src))
 		if err != nil {
 			return failure(err)

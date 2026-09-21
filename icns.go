@@ -12,6 +12,10 @@ import (
 	"github.com/jackmordaunt/icns/v4/internal/resample"
 )
 
+// Magic is the four bytes an icns file begins with, which are also the type
+// of the element enclosing every other.
+const Magic = "icns"
+
 // Encoder encodes ICNS files from a source image.
 type Encoder struct {
 	Wr        io.Writer

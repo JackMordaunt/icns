@@ -105,7 +105,7 @@ func (s *IconSet) WriteTo(wr io.Writer) (int64, error) {
 		}
 	}
 	// The file is itself an element enclosing all the others.
-	return writeElement(wr, element{id: "icns", payload: body.Bytes()})
+	return writeElement(wr, element{id: Magic, payload: body.Bytes()})
 }
 
 // tableOfContents lists each element's type and total size, in order.

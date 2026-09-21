@@ -284,7 +284,7 @@ func elementsOf(r io.Reader) ([]element, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(data) < elementHeaderSize || string(data[0:4]) != "icns" {
+	if len(data) < elementHeaderSize || string(data[0:4]) != Magic {
 		return nil, ErrInvalidHeader
 	}
 	fileSize := int(binary.BigEndian.Uint32(data[4:8]))
@@ -314,5 +314,5 @@ func elementsOf(r io.Reader) ([]element, error) {
 }
 
 func init() {
-	image.RegisterFormat("icns", "icns", Decode, nil)
+	image.RegisterFormat("icns", Magic, Decode, nil)
 }
