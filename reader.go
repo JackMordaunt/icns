@@ -251,8 +251,8 @@ func decode(r io.Reader) (icons []Entry, err error) {
 			continue
 		}
 		icon := Entry{
-			IconDescription: IconDescription{OsType: osType},
-			data:            el.payload,
+			OsType: osType,
+			data:   el.payload,
 		}
 		// Several types carry more than one format, so the payload decides
 		// wherever it says what it holds.
