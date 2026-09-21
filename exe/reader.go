@@ -172,7 +172,7 @@ func (res resources) entries(offset uint32) ([]entry, error) {
 		return nil, fmt.Errorf("%w: a directory of %d entries runs past the section", ErrMalformed, count)
 	}
 	out := make([]entry, 0, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		row := res.data[at+i*directoryEntrySize:]
 		var (
 			name   = binary.LittleEndian.Uint32(row[0:4])
@@ -231,7 +231,7 @@ func assemble(group leaf, images []leaf) (Group, error) {
 	rows = binary.LittleEndian.AppendUint16(rows, 0)
 	rows = binary.LittleEndian.AppendUint16(rows, 1)
 	rows = binary.LittleEndian.AppendUint16(rows, uint16(count))
-	for i := 0; i < count; i++ {
+	for i := range count {
 		row := group.data[groupHeaderSize+i*groupEntrySize:]
 		id := binary.LittleEndian.Uint16(row[12:14])
 		index := slices.IndexFunc(images, func(l leaf) bool { return l.id == id })

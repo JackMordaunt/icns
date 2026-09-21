@@ -105,7 +105,7 @@ func directory(r io.Reader) ([]Entry, error) {
 		return nil, fmt.Errorf("%w: the directory lists %d icons but is truncated", ErrMalformed, count)
 	}
 	entries := make([]Entry, 0, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		row := data[directorySize+entrySize*i:]
 		var (
 			width  = int(row[0])

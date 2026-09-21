@@ -49,16 +49,16 @@ func bmpIcon(size, bits int, c color.NRGBA) []byte {
 	rows := make([]byte, stride*size)
 	switch bits {
 	case 32:
-		for y := 0; y < size; y++ {
+		for y := range size {
 			row := rows[y*stride:]
-			for x := 0; x < size; x++ {
+			for x := range size {
 				row[x*4], row[x*4+1], row[x*4+2], row[x*4+3] = c.B, c.G, c.R, c.A
 			}
 		}
 	case 24:
-		for y := 0; y < size; y++ {
+		for y := range size {
 			row := rows[y*stride:]
-			for x := 0; x < size; x++ {
+			for x := range size {
 				row[x*3], row[x*3+1], row[x*3+2] = c.B, c.G, c.R
 			}
 		}

@@ -236,8 +236,8 @@ func FuzzDecode(f *testing.F) {
 // position, so an encode/decode roundtrip cannot pass by accident.
 func gradient(side int) *image.NRGBA {
 	img := image.NewNRGBA(image.Rect(0, 0, side, side))
-	for y := 0; y < side; y++ {
-		for x := 0; x < side; x++ {
+	for y := range side {
+		for x := range side {
 			img.SetNRGBA(x, y, color.NRGBA{
 				R: uint8(x * 255 / side),
 				G: uint8(y * 255 / side),

@@ -13,8 +13,8 @@ import (
 // position, so a round trip cannot pass by accident.
 func gradient(side int) *image.NRGBA {
 	img := image.NewNRGBA(image.Rect(0, 0, side, side))
-	for y := 0; y < side; y++ {
-		for x := 0; x < side; x++ {
+	for y := range side {
+		for x := range side {
 			img.SetNRGBA(x, y, color.NRGBA{
 				R: uint8(x * 255 / side),
 				G: uint8(y * 255 / side),
@@ -109,7 +109,7 @@ func TestDirectory(t *testing.T) {
 		t.Fatalf("count = %d, want 5", count)
 	}
 	offset := directorySize + entrySize*count
-	for i := 0; i < count; i++ {
+	for i := range count {
 		row := data[directorySize+entrySize*i:]
 		size := int(binary.LittleEndian.Uint32(row[8:12]))
 		at := int(binary.LittleEndian.Uint32(row[12:16]))

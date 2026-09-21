@@ -124,7 +124,7 @@ func encodeBMP(img image.Image, size int) []byte {
 	origin := img.Bounds().Min
 	mask := make([]byte, maskStride*size)
 	for y := size - 1; y >= 0; y-- {
-		for x := 0; x < size; x++ {
+		for x := range size {
 			c := color.NRGBAModel.Convert(img.At(origin.X+x, origin.Y+y)).(color.NRGBA)
 			out = append(out, c.B, c.G, c.R, c.A)
 			if c.A == 0 {

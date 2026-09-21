@@ -76,9 +76,9 @@ func decodeBMP(data []byte) (image.Image, error) {
 
 	img := image.NewNRGBA(image.Rect(0, 0, w, h))
 	var opaque bool
-	for y := 0; y < h; y++ {
+	for y := range h {
 		row := pixels[(h-1-y)*stride:]
-		for x := 0; x < w; x++ {
+		for x := range w {
 			c, err := pixelAt(row, x, bits, palette)
 			if err != nil {
 				return nil, err
@@ -92,9 +92,9 @@ func decodeBMP(data []byte) (image.Image, error) {
 	// A 32 bit icon carries its own alpha, unless whoever wrote it left the
 	// channel empty and meant the mask to be read instead.
 	if mask != nil && (bits != 32 || !opaque) {
-		for y := 0; y < h; y++ {
+		for y := range h {
 			row := mask[(h-1-y)*maskStride:]
-			for x := 0; x < w; x++ {
+			for x := range w {
 				c := img.NRGBAAt(x, y)
 				c.A = 0xFF
 				if row[x/8]&(0x80>>(x%8)) != 0 {

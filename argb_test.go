@@ -14,8 +14,8 @@ func argbElement(side int) (payload []byte, want *image.NRGBA) {
 	pixels := side * side
 	planes := make([]byte, pixels*4)
 	want = image.NewNRGBA(image.Rect(0, 0, side, side))
-	for y := 0; y < side; y++ {
-		for x := 0; x < side; x++ {
+	for y := range side {
+		for x := range side {
 			i := y*side + x
 			c := color.NRGBA{
 				R: uint8(x * 255 / side),

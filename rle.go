@@ -111,8 +111,8 @@ func splitPlanes(img image.Image, side int) (planes, mask []byte) {
 	planes = make([]byte, pixels*3)
 	mask = make([]byte, pixels)
 	origin := img.Bounds().Min
-	for y := 0; y < side; y++ {
-		for x := 0; x < side; x++ {
+	for y := range side {
+		for x := range side {
 			c := color.NRGBAModel.Convert(img.At(origin.X+x, origin.Y+y)).(color.NRGBA)
 			i := y*side + x
 			planes[i] = c.R
@@ -135,7 +135,7 @@ func decodeARGB(data []byte, side int) (image.Image, error) {
 	// Alpha is a plane of its own rather than folded into the colour, so the
 	// result is non-premultiplied.
 	img := image.NewNRGBA(image.Rect(0, 0, side, side))
-	for i := 0; i < pixels; i++ {
+	for i := range pixels {
 		px := img.Pix[i*4 : i*4+4 : i*4+4]
 		px[3] = planes[i]
 		px[0] = planes[pixels+i]
@@ -160,7 +160,7 @@ func decodeRGB(data, mask []byte, side int) (image.Image, error) {
 	// The planes carry straight colour and the mask carries alpha, so the
 	// result is non-premultiplied.
 	img := image.NewNRGBA(image.Rect(0, 0, side, side))
-	for i := 0; i < pixels; i++ {
+	for i := range pixels {
 		px := img.Pix[i*4 : i*4+4 : i*4+4]
 		px[0] = planes[i]
 		px[1] = planes[pixels+i]

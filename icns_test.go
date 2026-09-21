@@ -186,8 +186,8 @@ func TestResizeKeepsColorOutOfTransparentPixels(t *testing.T) {
 	t.Parallel()
 	// Left half opaque white, right half transparent black.
 	src := image.NewNRGBA(image.Rect(0, 0, 64, 64))
-	for y := 0; y < 64; y++ {
-		for x := 0; x < 32; x++ {
+	for y := range 64 {
+		for x := range 32 {
 			src.SetNRGBA(x, y, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
 		}
 	}

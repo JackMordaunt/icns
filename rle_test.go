@@ -138,8 +138,8 @@ func legacyIcon(side int) (rgb, mask []byte, want *image.NRGBA) {
 	planes := make([]byte, pixels*3)
 	mask = make([]byte, pixels)
 	want = image.NewNRGBA(image.Rect(0, 0, side, side))
-	for y := 0; y < side; y++ {
-		for x := 0; x < side; x++ {
+	for y := range side {
+		for x := range side {
 			i := y*side + x
 			c := color.NRGBA{
 				R: uint8(x * 255 / side),
@@ -194,8 +194,8 @@ func TestDecodeLegacyElements(t *testing.T) {
 		if err != nil {
 			st.Fatal(err)
 		}
-		for y := 0; y < side; y++ {
-			for x := 0; x < side; x++ {
+		for y := range side {
+			for x := range side {
 				if _, _, _, a := img.At(x, y).RGBA(); a != 0xFFFF {
 					st.Fatalf("pixel (%d,%d) alpha = %d, want opaque", x, y, a)
 				}

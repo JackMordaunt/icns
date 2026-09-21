@@ -90,7 +90,7 @@ func decodeIndexed(data, mask []byte, w, h, bits int) (image.Image, error) {
 		return nil, fmt.Errorf("%w: mask holds %d bytes, want %d", ErrMalformed, len(mask), bitmap)
 	}
 	img := image.NewNRGBA(image.Rect(0, 0, w, h))
-	for i := 0; i < pixels; i++ {
+	for i := range pixels {
 		var c color.NRGBA
 		switch bits {
 		case 1:
