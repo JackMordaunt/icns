@@ -125,20 +125,18 @@ func TestContainerReadsTheBytesFirst(t *testing.T) {
 	for _, tt := range []struct {
 		name string
 		data []byte
-		ext  string
 		want string
 	}{
-		{"icns named ico", encoded(t, func(b *bytes.Buffer) error { return icns.Encode(b, art(64)) }), ".ico", ".icns"},
-		{"ico named icns", encoded(t, func(b *bytes.Buffer) error { return ico.Encode(b, art(64)) }), ".icns", ".ico"},
-		{"unknown bytes, known extension", []byte("rubbish"), ".icns", ".icns"},
-		{"unknown bytes, plain extension", []byte("rubbish"), ".png", ""},
-		{"a library, whatever it is called", fixture(t, "icon.dll"), ".png", ".dll"},
-		{"a program, whatever it is called", fixture(t, "tiny.exe"), ".dll", ".exe"},
-		{"the two bytes alone are not a binary", []byte("MZ\x90\x00"), "", ""},
+		{"an icns", encoded(t, func(b *bytes.Buffer) error { return icns.Encode(b, art(64)) }), ".icns"},
+		{"an ico", encoded(t, func(b *bytes.Buffer) error { return ico.Encode(b, art(64)) }), ".ico"},
+		{"a library", fixture(t, "icon.dll"), ".dll"},
+		{"a program", fixture(t, "tiny.exe"), ".exe"},
+		{"bytes that say nothing", []byte("rubbish"), ""},
+		{"the two bytes alone are not a binary", []byte("MZ\x90\x00"), ""},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := containerSniff(tt.data, tt.ext); got != tt.want {
-				t.Errorf("container = %q, want %q", got, tt.want)
+			if got := containerSniff(tt.data); got != tt.want {
+				t.Errorf("containerSniff = %q, want %q", got, tt.want)
 			}
 		})
 	}

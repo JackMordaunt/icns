@@ -22,7 +22,7 @@ func check(path string, r io.Reader) error {
 	}
 	var lines []string
 	serious := 0
-	switch containerSniff(data, extension(filepath.Ext(path))) {
+	switch containerSniff(data) {
 	case ".icns":
 		problems, err := icns.Validate(bytes.NewReader(data))
 		if err != nil {
