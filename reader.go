@@ -313,11 +313,6 @@ func elementsOf(r io.Reader) ([]element, error) {
 	return elements, nil
 }
 
-func isOsType(ID string) bool {
-	_, ok := getTypeFromID(ID)
-	return ok
-}
-
 func init() {
 	image.RegisterFormat("icns", "icns", Decode, nil)
 }

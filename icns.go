@@ -221,7 +221,11 @@ func (f ImageFormat) String() string {
 type encoding int
 
 const (
-	// encodingCompressed holds a whole image file, PNG or JPEG 2000.
+	// encodingCompressed holds a whole image file, PNG or JPEG 2000. Nothing
+	// names it, because it is the zero value every type that stores a whole
+	// file takes by leaving the field out; removing it would renumber the
+	// rest and make those types something else.
+	//lint:ignore U1000 the zero value, taken by omission
 	encodingCompressed encoding = iota
 	// encodingRGB holds run-length encoded colour planes, with alpha in the
 	// separate element named by OsType.mask.
