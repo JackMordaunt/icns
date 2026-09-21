@@ -223,6 +223,10 @@ func (res resources) at(offset uint32) ([]byte, error) {
 // assemble turns a group icon directory and the images it names back into an
 // ico file. The two differ only in the last field of a row, where the group
 // names a resource and an ico gives the position of the image.
+//
+// TODO(jfm): can we normalize the representation of the icon and dry up ico.Icon + ico.entry?
+// Perhaps not, but surely the PE cannot specify data that an .ico cannot? So why does ico.entry
+// have less fields than ico.Icon?
 func assemble(group leaf, images []leaf) (Group, error) {
 	if len(group.data) < groupHeaderSize {
 		return Group{}, fmt.Errorf("%w: icon group %d holds %d bytes", ErrMalformed, group.id, len(group.data))
@@ -232,7 +236,7 @@ func assemble(group leaf, images []leaf) (Group, error) {
 		return Group{}, fmt.Errorf("%w: icon group %d lists %d icons it does not hold", ErrMalformed, group.id, count)
 	}
 	var (
-		stored = make([]ico.Stored, 0, count)
+		stored = make([]ico.Icon, 0, count)
 		sizes  []int
 	)
 	for i := range count {
@@ -245,7 +249,7 @@ func assemble(group leaf, images []leaf) (Group, error) {
 		// A group row says everything an ico row says except where the image
 		// lies, which it answers with a resource instead. The length is taken
 		// from the resource rather than from the field that names it.
-		icon := ico.Stored{
+		icon := ico.Icon{
 			Width:   side(row[0]),
 			Height:  side(row[1]),
 			Colours: row[2],

@@ -5,9 +5,9 @@ import (
 	"fmt"
 )
 
-// Stored is an icon whose pixels are already encoded, as a file or a Windows
+// Icon is an icon whose pixels are already encoded, as a file or a Windows
 // resource holds them.
-type Stored struct {
+type Icon struct {
 	// Width and Height are the icon's dimensions in pixels, from 1 to 256.
 	// The format writes 256 as zero, which this hides.
 	Width, Height int
@@ -23,14 +23,14 @@ type Stored struct {
 	Data []byte
 }
 
-// Assemble writes icons that are already encoded as an ico file.
+// Assemble writes icons that are already encoded into an ico file.
 //
 // The pixels are copied rather than decoded and written again, so a file
 // taken apart and put back together is byte for byte the file that went in.
 // That is what makes it usable on icons pulled out of somewhere else, such as
 // the resources of a Windows binary, where re-encoding would lose whatever
 // the original encoder chose.
-func Assemble(icons []Stored) ([]byte, error) {
+func Assemble(icons []Icon) ([]byte, error) {
 	if len(icons) == 0 {
 		return nil, ErrNoIcons
 	}

@@ -7,6 +7,46 @@ import (
 	"image/color"
 )
 
+// TODO(jfm): can we just use the standard bmp decoder from x/image/bmp?
+
+// encodeBMP writes the bitmap an icon holds: a header, the pixels bottom up
+// in blue, green, red, alpha order, then the one bit mask that predates the
+// alpha channel and that some of Windows still reads.
+func encodeBMP(img image.Image, size int) []byte {
+	var (
+		maskStride = ((size + 31) / 32) * 4
+		pixels     = size * size * 4
+		out        = make([]byte, 0, headerSize+pixels+maskStride*size)
+	)
+	out = binary.LittleEndian.AppendUint32(out, headerSize)
+	out = binary.LittleEndian.AppendUint32(out, uint32(size))
+	// The height covers the pixels and the mask together.
+	out = binary.LittleEndian.AppendUint32(out, uint32(size*2))
+	out = binary.LittleEndian.AppendUint16(out, 1)
+	out = binary.LittleEndian.AppendUint16(out, 32)
+	out = binary.LittleEndian.AppendUint32(out, 0) // Uncompressed.
+	out = binary.LittleEndian.AppendUint32(out, uint32(pixels+maskStride*size))
+	out = binary.LittleEndian.AppendUint32(out, 0) // Pixels per metre, across.
+	out = binary.LittleEndian.AppendUint32(out, 0) // Pixels per metre, down.
+	out = binary.LittleEndian.AppendUint32(out, 0) // Colours used.
+	out = binary.LittleEndian.AppendUint32(out, 0) // Colours that matter.
+
+	origin := img.Bounds().Min
+	mask := make([]byte, maskStride*size)
+	for y := size - 1; y >= 0; y-- {
+		for x := range size {
+			c := color.NRGBAModel.Convert(img.At(origin.X+x, origin.Y+y)).(color.NRGBA)
+			out = append(out, c.B, c.G, c.R, c.A)
+			if c.A == 0 {
+				// A set bit means the background shows through.
+				row := (size - 1 - y) * maskStride
+				mask[row+x/8] |= 0x80 >> (x % 8)
+			}
+		}
+	}
+	return append(out, mask...)
+}
+
 // decodeBMP reads the device independent bitmap an icon holds: a header, a
 // colour table when the pixels are indexed, the pixels bottom up, and a one
 // bit mask. The stored height covers the pixels and the mask together, so it

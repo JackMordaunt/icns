@@ -79,7 +79,7 @@ func Validate(r io.Reader) ([]Problem, error) {
 }
 
 // problems reports what the icon's own bytes say about it.
-func (e Entry) problems() []Problem {
+func (e IconDecoder) problems() []Problem {
 	if e.Format == FormatPNG {
 		return e.pngProblems()
 	}
@@ -88,7 +88,7 @@ func (e Entry) problems() []Problem {
 
 // pngProblems reads the image header of a PNG icon and compares what it
 // declares against what Windows reads and what the directory promised.
-func (e Entry) pngProblems() []Problem {
+func (e IconDecoder) pngProblems() []Problem {
 	width, height, colour, ok := ihdr(e.data)
 	if !ok {
 		return []Problem{{
@@ -128,7 +128,7 @@ func (e Entry) pngProblems() []Problem {
 // bmpProblems reads the header of a bitmap icon and compares what it declares
 // against the directory. The stored height covers the pixels and the mask
 // together, so it is twice the height of the icon.
-func (e Entry) bmpProblems() []Problem {
+func (e IconDecoder) bmpProblems() []Problem {
 	if len(e.data) < headerSize {
 		return []Problem{{
 			Severity: Invisible,
@@ -182,10 +182,10 @@ func (e Entry) bmpProblems() []Problem {
 }
 
 // missing reports the sizes Windows draws that the file does not hold.
-func missing(icons []Entry) []Problem {
+func missing(icons []IconDecoder) []Problem {
 	var absent []string
 	for _, size := range drawn {
-		if slices.ContainsFunc(icons, func(e Entry) bool {
+		if slices.ContainsFunc(icons, func(e IconDecoder) bool {
 			return e.Width == size && e.Height == size
 		}) {
 			continue
@@ -205,7 +205,7 @@ func missing(icons []Entry) []Problem {
 }
 
 // duplicated reports sizes the file holds more than once.
-func duplicated(icons []Entry) []Problem {
+func duplicated(icons []IconDecoder) []Problem {
 	seen := make(map[string]int, len(icons))
 	var order []string
 	for _, icon := range icons {

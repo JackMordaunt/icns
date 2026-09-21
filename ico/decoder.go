@@ -17,7 +17,7 @@ var pngHeader = []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}
 // Decoder reads an ico file and decodes its icons on demand, so a caller
 // after one size does not pay for the rest.
 type Decoder struct {
-	entries []Entry
+	entries []IconDecoder
 }
 
 // NewDecoder reads r and identifies the icons it holds without decoding any
@@ -28,19 +28,19 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 		return nil, err
 	}
 	// Largest first, keeping file order between icons of equal size.
-	slices.SortStableFunc(entries, func(a, b Entry) int {
+	slices.SortStableFunc(entries, func(a, b IconDecoder) int {
 		return cmp.Compare(b.Width*b.Height, a.Width*a.Height)
 	})
 	return &Decoder{entries: entries}, nil
 }
 
 // Icons returns the icons in the file, largest first.
-func (d *Decoder) Icons() []Entry {
+func (d *Decoder) Icons() []IconDecoder {
 	return slices.Clone(d.entries)
 }
 
-// Entry is one icon in an ico file, before its pixels are decoded.
-type Entry struct {
+// IconDecoder is one icon in an ico file, before its pixels are decoded.
+type IconDecoder struct {
 	// Width and Height are the dimensions the directory gives.
 	Width, Height int
 	// Format is how the icon's pixels are stored.
@@ -49,7 +49,7 @@ type Entry struct {
 	data []byte
 }
 
-func (e Entry) String() string {
+func (e IconDecoder) String() string {
 	return fmt.Sprintf("%dx%d (%s)", e.Width, e.Height, e.Format)
 }
 
@@ -57,13 +57,13 @@ func (e Entry) String() string {
 // is a whole image file; for a bitmap it is the header, pixels and mask.
 //
 // The bytes are not copied, and must not be modified.
-func (e Entry) Payload() []byte {
+func (e IconDecoder) Payload() []byte {
 	return e.data
 }
 
 // Decode decodes the icon's pixels. A PNG icon is passed to image.Decode, so
 // it is read by whatever the program has registered.
-func (e Entry) Decode() (image.Image, error) {
+func (e IconDecoder) Decode() (image.Image, error) {
 	if e.Format == FormatPNG {
 		img, _, err := image.Decode(bytes.NewReader(e.data))
 		if errors.Is(err, image.ErrFormat) {
@@ -82,7 +82,7 @@ func (e Entry) Decode() (image.Image, error) {
 }
 
 // directory splits an ico file into the icons it lists.
-func directory(r io.Reader) ([]Entry, error) {
+func directory(r io.Reader) ([]IconDecoder, error) {
 	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func directory(r io.Reader) ([]Entry, error) {
 	if len(data) < directorySize+entrySize*count {
 		return nil, fmt.Errorf("%w: the directory lists %d icons but is truncated", ErrMalformed, count)
 	}
-	entries := make([]Entry, 0, count)
+	entries := make([]IconDecoder, 0, count)
 	for i := range count {
 		row := data[directorySize+entrySize*i:]
 		var (
@@ -124,7 +124,7 @@ func directory(r io.Reader) ([]Entry, error) {
 			return nil, fmt.Errorf("%w: icon %d lies at %d for %d bytes, outside the file", ErrMalformed, i, offset, size)
 		}
 		payload := data[offset : offset+size]
-		entry := Entry{Width: width, Height: height, data: payload}
+		entry := IconDecoder{Width: width, Height: height, data: payload}
 		if bytes.HasPrefix(payload, pngHeader) {
 			entry.Format = FormatPNG
 		}

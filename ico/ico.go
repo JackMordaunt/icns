@@ -14,7 +14,6 @@ import (
 	"errors"
 	"fmt"
 	"image"
-	"io"
 
 	"github.com/jackmordaunt/icns/v4/internal/resample"
 )
@@ -101,71 +100,3 @@ func Sizes() []uint {
 
 // smallest is the size below which there is nothing worth writing.
 const smallest = 16
-
-// Encoder encodes ico files from a source image.
-type Encoder struct {
-	Wr        io.Writer
-	Algorithm InterpolationFunction
-}
-
-// NewEncoder initialises an encoder.
-func NewEncoder(wr io.Writer) *Encoder {
-	return &Encoder{
-		Wr:        wr,
-		Algorithm: MitchellNetravali,
-	}
-}
-
-// WithAlgorithm applies the interpolation function used to resize the image.
-func (enc *Encoder) WithAlgorithm(a InterpolationFunction) *Encoder {
-	enc.Algorithm = a
-	return enc
-}
-
-// Encode writes the image at every size the file holds, resizing it for each.
-func (enc *Encoder) Encode(img image.Image) error {
-	if enc.Wr == nil {
-		return errors.New("cannot write to nil writer")
-	}
-	if img == nil {
-		return errors.New("cannot encode nil image")
-	}
-	return enc.write(nil, img)
-}
-
-// EncodeSizes writes artwork supplied per size, so a drawing made for one
-// size is used there rather than reduced from a larger one. Sizes given no
-// artwork are filled from the largest image supplied, which also sets the
-// largest icon written.
-func (enc *Encoder) EncodeSizes(images map[uint]image.Image) error {
-	if enc.Wr == nil {
-		return errors.New("cannot write to nil writer")
-	}
-	if len(images) == 0 {
-		return errors.New("cannot encode without an image")
-	}
-	var source image.Image
-	for _, size := range sizes {
-		img, ok := images[size]
-		if !ok {
-			continue
-		}
-		if img == nil {
-			return fmt.Errorf("cannot encode nil image for %d", size)
-		}
-		// sizes runs largest first, so the first match is the biggest slot
-		// that was filled.
-		if source == nil || resample.BiggestSide(img) > resample.BiggestSide(source) {
-			source = img
-		}
-	}
-	if source == nil {
-		return errors.New("no image was given for a size this format holds")
-	}
-	return enc.write(images, source)
-}
-
-// Encode writes img to wr in ico format, at every size the file holds.
-func Encode(wr io.Writer, img image.Image) error {
-	return NewEncoder(wr).Encode(img)
-}

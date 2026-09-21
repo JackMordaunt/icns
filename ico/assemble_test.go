@@ -11,7 +11,7 @@ import (
 func payload(n int, fill byte) []byte { return bytes.Repeat([]byte{fill}, n) }
 
 func TestAssembleKeepsWhatItWasGiven(t *testing.T) {
-	icons := []Stored{
+	icons := []Icon{
 		{Width: 256, Height: 256, Planes: 1, Bits: 32, Data: payload(40, 0xA1)},
 		{Width: 32, Height: 32, Colours: 16, Planes: 1, Bits: 4, Data: payload(16, 0xB2)},
 		{Width: 16, Height: 16, Planes: 1, Bits: 32, Data: payload(8, 0xC3)},
@@ -42,7 +42,7 @@ func TestAssembleKeepsWhatItWasGiven(t *testing.T) {
 // TestAssembleWritesTheLargestAsZero covers the one dimension that does not
 // fit in the byte the directory keeps it in.
 func TestAssembleWritesTheLargestAsZero(t *testing.T) {
-	file, err := Assemble([]Stored{{Width: 256, Height: 256, Planes: 1, Bits: 32, Data: payload(8, 0xFF)}})
+	file, err := Assemble([]Icon{{Width: 256, Height: 256, Planes: 1, Bits: 32, Data: payload(8, 0xFF)}})
 	if err != nil {
 		t.Fatalf("assembling: %v", err)
 	}
@@ -62,23 +62,23 @@ func TestAssembleWritesTheLargestAsZero(t *testing.T) {
 func TestAssembleRefusesWhatItCannotWrite(t *testing.T) {
 	for _, tt := range []struct {
 		name  string
-		icons []Stored
+		icons []Icon
 		want  error
 	}{
 		{"nothing at all", nil, ErrNoIcons},
 		{
 			name:  "an icon with no pixels",
-			icons: []Stored{{Width: 16, Height: 16, Planes: 1, Bits: 32}},
+			icons: []Icon{{Width: 16, Height: 16, Planes: 1, Bits: 32}},
 			want:  ErrMalformed,
 		},
 		{
 			name:  "larger than the directory can record",
-			icons: []Stored{{Width: 512, Height: 512, Planes: 1, Bits: 32, Data: payload(8, 1)}},
+			icons: []Icon{{Width: 512, Height: 512, Planes: 1, Bits: 32, Data: payload(8, 1)}},
 			want:  ErrMalformed,
 		},
 		{
 			name:  "no size at all",
-			icons: []Stored{{Width: 0, Height: 16, Planes: 1, Bits: 32, Data: payload(8, 1)}},
+			icons: []Icon{{Width: 0, Height: 16, Planes: 1, Bits: 32, Data: payload(8, 1)}},
 			want:  ErrMalformed,
 		},
 	} {
@@ -101,9 +101,9 @@ func TestAssembleIsWhatTheEncoderUses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading: %v", err)
 	}
-	var stored []Stored
+	var stored []Icon
 	for _, icon := range d.Icons() {
-		stored = append(stored, Stored{
+		stored = append(stored, Icon{
 			Width:  icon.Width,
 			Height: icon.Height,
 			Planes: 1,
