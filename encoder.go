@@ -112,7 +112,7 @@ func NewIconSetEncoderFrom(images map[Slot]image.Image, interp InterpolationFunc
 func newIconSet(images map[Slot]image.Image, source image.Image, interp InterpolationFunction) (*IconSetEncoder, error) {
 	biggest := findNearestSize(source)
 	if biggest == 0 {
-		return nil, ErrImageTooSmall{image: source, need: 16}
+		return nil, ErrImageTooSmall{image: source, need: smallest}
 	}
 	var plan []OsType
 	for _, size := range sizesFrom(biggest) {
@@ -196,6 +196,11 @@ func encodeImage(img image.Image) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// typeTOC is the element type the table of contents is written under, which
+// the encoder writes first so a reader can index the file without walking
+// every element.
+const typeTOC = "TOC "
+
 // writeElement writes one element: its 4-byte type, its length counting the
 // header, then its payload.
 func writeElement(wr io.Writer, el element) (int64, error) {
@@ -246,7 +251,7 @@ func (s *IconSetEncoder) WriteTo(wr io.Writer) (int64, error) {
 // tableOfContents lists each element's type and total size, in order.
 func tableOfContents(elements []element) element {
 	toc := element{
-		id:      "TOC ",
+		id:      typeTOC,
 		payload: make([]byte, 0, len(elements)*elementHeaderSize),
 	}
 	for _, el := range elements {

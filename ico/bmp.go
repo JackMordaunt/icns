@@ -7,14 +7,38 @@ import (
 	"image/color"
 )
 
-// TODO(jfm): can we just use the standard bmp decoder from x/image/bmp?
+// The pixels an icon written here holds: a single plane of 32-bit BGRA,
+// which the bitmap header declares, the directory row repeats, and which
+// Windows reads a PNG icon only when the directory says.
+const (
+	// iconPlanes is the plane count of the pixels an icon holds.
+	iconPlanes = 1
+	// iconBits is the depth of the pixels an icon holds, in bits.
+	iconBits = 32
+)
+
+// Values of the bitmap header's fields, as wingdi.h and the icon format
+// number them.
+const (
+	// biRGB is the value of the compression field for uncompressed pixels,
+	// which is the only kind an icon holds.
+	biRGB = 0
+	// bitsPerDword is the boundary in bits every row of a bitmap is padded
+	// up to.
+	bitsPerDword = 32
+	// bytesPerDword is the width of that boundary in bytes.
+	bytesPerDword = 4
+	// paletteEntrySize is the width of one colour table entry: blue, green,
+	// red and one reserved byte.
+	paletteEntrySize = 4
+)
 
 // encodeBMP writes the bitmap an icon holds: a header, the pixels bottom up
 // in blue, green, red, alpha order, then the one bit mask that predates the
 // alpha channel and that some of Windows still reads.
 func encodeBMP(img image.Image, size int) []byte {
 	var (
-		maskStride = ((size + 31) / 32) * 4
+		maskStride = ((size + bitsPerDword - 1) / bitsPerDword) * bytesPerDword
 		pixels     = size * size * 4
 		out        = make([]byte, 0, headerSize+pixels+maskStride*size)
 	)
@@ -22,9 +46,9 @@ func encodeBMP(img image.Image, size int) []byte {
 	out = binary.LittleEndian.AppendUint32(out, uint32(size))
 	// The height covers the pixels and the mask together.
 	out = binary.LittleEndian.AppendUint32(out, uint32(size*2))
-	out = binary.LittleEndian.AppendUint16(out, 1)
-	out = binary.LittleEndian.AppendUint16(out, 32)
-	out = binary.LittleEndian.AppendUint32(out, 0) // Uncompressed.
+	out = binary.LittleEndian.AppendUint16(out, iconPlanes)
+	out = binary.LittleEndian.AppendUint16(out, iconBits)
+	out = binary.LittleEndian.AppendUint32(out, biRGB) // Uncompressed.
 	out = binary.LittleEndian.AppendUint32(out, uint32(pixels+maskStride*size))
 	out = binary.LittleEndian.AppendUint32(out, 0) // Pixels per metre, across.
 	out = binary.LittleEndian.AppendUint32(out, 0) // Pixels per metre, down.
@@ -63,7 +87,7 @@ func decodeBMP(data []byte) (image.Image, error) {
 		compression = binary.LittleEndian.Uint32(data[16:20])
 		colours     = int(binary.LittleEndian.Uint32(data[32:36]))
 	)
-	if compression != 0 {
+	if compression != biRGB {
 		return nil, fmt.Errorf("%w: the bitmap is compressed", ErrUnsupportedFormat)
 	}
 	switch bits {
@@ -88,20 +112,20 @@ func decodeBMP(data []byte) (image.Image, error) {
 		if entries == 0 {
 			entries = 1 << bits
 		}
-		if offset+entries*4 > len(data) {
+		if offset+entries*paletteEntrySize > len(data) {
 			return nil, fmt.Errorf("%w: the colour table of %d runs past the icon", ErrMalformed, entries)
 		}
 		palette = make([]color.NRGBA, entries)
 		for i := range palette {
-			at := offset + i*4
+			at := offset + i*paletteEntrySize
 			palette[i] = color.NRGBA{R: data[at+2], G: data[at+1], B: data[at], A: 0xFF}
 		}
-		offset += entries * 4
+		offset += entries * paletteEntrySize
 	}
 
 	var (
-		stride     = ((w*bits + 31) / 32) * 4
-		maskStride = ((w + 31) / 32) * 4
+		stride     = ((w*bits + bitsPerDword - 1) / bitsPerDword) * bytesPerDword
+		maskStride = ((w + bitsPerDword - 1) / bitsPerDword) * bytesPerDword
 		pixelBytes = stride * h
 	)
 	if offset+pixelBytes > len(data) {

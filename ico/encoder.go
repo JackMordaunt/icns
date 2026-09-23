@@ -119,8 +119,8 @@ func (enc *Encoder) encode(images map[uint]image.Image, source image.Image) erro
 		icons = append(icons, Icon{
 			Width:  int(size),
 			Height: int(size),
-			Planes: 1,
-			Bits:   32,
+			Planes: iconPlanes,
+			Bits:   iconBits,
 			Data:   data,
 		})
 	}

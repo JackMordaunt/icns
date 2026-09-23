@@ -19,6 +19,10 @@ import (
 	"github.com/jackmordaunt/icns/v4/ico"
 )
 
+// jpegQuality is the quality JPEG is written at: the maximum, so a lossy
+// format costs the artwork as little as it can.
+const jpegQuality = 100
+
 func main() {
 	api := js.Global().Get("Object").New()
 	api.Set("convert", js.FuncOf(convert))
@@ -53,7 +57,7 @@ func convert(_ js.Value, args []js.Value) (out any) {
 	case "png":
 		err = png.Encode(buf, img)
 	case "jpg", "jpeg":
-		err = jpeg.Encode(buf, img, &jpeg.Options{Quality: 100})
+		err = jpeg.Encode(buf, img, &jpeg.Options{Quality: jpegQuality})
 	default:
 		err = fmt.Errorf("cannot write %s", format)
 	}

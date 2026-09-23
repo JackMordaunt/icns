@@ -18,6 +18,10 @@ var sizes = []uint{
 	16,
 }
 
+// smallest is the last entry of sizes: the size below which the encoder
+// writes nothing, and the smallest artwork it accepts.
+const smallest = 16
+
 // IconDescription describes an icon.
 type IconDescription struct {
 	OsType

@@ -16,6 +16,11 @@ var (
 	argbHeader     = []byte("ARGB")
 )
 
+// it32PrefixSize is the size of the zero bytes that begin it32's payload:
+// the one colour element that prefixes its run length encoded planes with
+// four zero bytes, which its reader steps over.
+const it32PrefixSize = 4
+
 // Decoder reads an icns file and decodes its icons on demand, so a caller
 // after one size does not pay for the rest.
 type Decoder struct {
@@ -64,8 +69,8 @@ func (e Entry) Decode() (image.Image, error) {
 		data := e.data
 		// it32 is the one colour element that prefixes its planes with four
 		// zero bytes.
-		if e.ID == "it32" && len(data) >= 4 && binary.BigEndian.Uint32(data[:4]) == 0 {
-			data = data[4:]
+		if e.ID == "it32" && len(data) >= it32PrefixSize && binary.BigEndian.Uint32(data[:it32PrefixSize]) == 0 {
+			data = data[it32PrefixSize:]
 		}
 		img, err := decodeRGB(data, e.mask, int(e.Size))
 		if err != nil {
@@ -116,7 +121,7 @@ func (e Entry) indexed() (image.Image, error) {
 	// A "#" element holds its bitmap first and its mask second, whether it
 	// is the icon itself or the companion an indexed icon points at.
 	var (
-		plane = width * height / 8
+		plane = width * height / bitsPerByte
 		mask  = e.mask
 	)
 	if e.enc == encodingBitmap {

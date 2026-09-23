@@ -102,7 +102,7 @@ func (e IconDecoder) pngProblems() []Problem {
 	// colour types without an alpha channel are greyscale, truecolour and
 	// indexed.
 	switch colour {
-	case 0, 2, 3:
+	case pngGreyscale, pngTruecolour, pngIndexed:
 		problems = append(problems, Problem{
 			Severity: Invisible,
 			Icon:     e.String(),
@@ -237,7 +237,7 @@ func ihdr(data []byte) (width, height int, colour byte, ok bool) {
 	// The signature, then the length and type of the first chunk, then the
 	// thirteen bytes the image header holds.
 	const at = 16
-	if len(data) < at+10 || string(data[12:16]) != "IHDR" {
+	if len(data) < at+10 || string(data[12:16]) != typeIHDR {
 		return 0, 0, 0, false
 	}
 	width = int(binary.BigEndian.Uint32(data[at : at+4]))
@@ -245,18 +245,34 @@ func ihdr(data []byte) (width, height int, colour byte, ok bool) {
 	return width, height, data[at+9], true
 }
 
+// PNG chunk and colour types, as the image header of an icon numbers them.
+const (
+	// typeIHDR is the chunk type a PNG stores its image header under.
+	typeIHDR = "IHDR"
+	// pngGreyscale is the colour type of one grey channel.
+	pngGreyscale = 0
+	// pngTruecolour is the colour type of red, green and blue channels.
+	pngTruecolour = 2
+	// pngIndexed is the colour type of indices into a colour table.
+	pngIndexed = 3
+	// pngGreyscaleAlpha is the colour type of a grey channel and its alpha.
+	pngGreyscaleAlpha = 4
+	// pngTruecolourAlpha is the colour type of red, green, blue and alpha.
+	pngTruecolourAlpha = 6
+)
+
 // colourType names how a PNG stores its pixels.
 func colourType(c byte) string {
 	switch c {
-	case 0:
+	case pngGreyscale:
 		return "greyscale"
-	case 2:
+	case pngTruecolour:
 		return "truecolour"
-	case 3:
+	case pngIndexed:
 		return "indexed colour"
-	case 4:
+	case pngGreyscaleAlpha:
 		return "greyscale with alpha"
-	case 6:
+	case pngTruecolourAlpha:
 		return "truecolour with alpha"
 	}
 	return fmt.Sprintf("colour type %d", c)

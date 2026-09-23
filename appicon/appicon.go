@@ -127,6 +127,13 @@ const (
 	PlatformMac = "macOS"
 )
 
+// The shadow and translucency Icon Composer writes for an icon composed
+// without a choice about either, which New matches.
+const (
+	defaultShadowOpacity     = 0.5
+	defaultTranslucencyValue = 0.5
+)
+
 // New returns a bundle holding one layer, which is what a single image makes.
 // The shadow and translucency match what Icon Composer writes for an icon
 // composed the same way.
@@ -135,8 +142,8 @@ func New(img image.Image, name string) Bundle {
 		Fill: FillAutomatic,
 		Groups: []Group{{
 			Layers:       []Layer{{Name: name, Image: img}},
-			Shadow:       &Shadow{Kind: ShadowNeutral, Opacity: 0.5},
-			Translucency: &Translucency{Enabled: true, Value: 0.5},
+			Shadow:       &Shadow{Kind: ShadowNeutral, Opacity: defaultShadowOpacity},
+			Translucency: &Translucency{Enabled: true, Value: defaultTranslucencyValue},
 		}},
 		Platforms: []string{PlatformMac},
 	}

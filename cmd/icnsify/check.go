@@ -82,9 +82,9 @@ func check(path string, r io.Reader) error {
 // whose bytes say nothing.
 func containerSniff(data []byte) string {
 	switch {
-	case len(data) >= 4 && string(data[:4]) == icns.Magic:
+	case bytes.HasPrefix(data, []byte(icns.Magic)):
 		return ".icns"
-	case len(data) >= 4 && string(data[:4]) == ico.Magic:
+	case bytes.HasPrefix(data, []byte(ico.Magic)):
 		return ".ico"
 	}
 	if kind, ok := exe.Identify(bytes.NewReader(data)); ok {

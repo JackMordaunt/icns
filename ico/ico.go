@@ -67,6 +67,11 @@ func (err ErrImageTooSmall) Error() string {
 // the kind, which is 1 for an icon rather than a cursor.
 const Magic = "\x00\x00\x01\x00"
 
+// kindIcon is the value of the directory's kind field for an icon, which is
+// the only kind this package reads and writes; the same layout with a kind
+// of 2 is a cursor.
+const kindIcon = 1
+
 // Format is how an icon's pixels are stored inside the file.
 type Format int
 

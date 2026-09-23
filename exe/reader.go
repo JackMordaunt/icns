@@ -13,11 +13,18 @@ import (
 	"github.com/jackmordaunt/icns/v4/ico"
 )
 
-// side reads a dimension from a directory row, where the largest icon does
-// not fit in a byte and is written as zero.
+// resourceSection is the PE section a binary keeps its resources in.
+const resourceSection = ".rsrc"
+
+// largestSide is the biggest icon a directory can describe. It does not fit
+// in the byte a row stores a side in, so a stored zero stands for it.
+const largestSide = 256
+
+// side reads a dimension from a directory row, where the largest icon is
+// written as zero.
 func side(stored byte) int {
 	if stored == 0 {
-		return 256
+		return largestSide
 	}
 	return int(stored)
 }
@@ -46,7 +53,7 @@ func Icons(r io.ReaderAt) ([]Group, error) {
 		return nil, fmt.Errorf("reading binary: %w", err)
 	}
 	defer file.Close()
-	section := file.Section(".rsrc")
+	section := file.Section(resourceSection)
 	if section == nil {
 		return nil, ErrNoIcons
 	}
@@ -165,6 +172,17 @@ type entry struct {
 	directory bool
 }
 
+// The two uses of a directory entry's high bit, which the rest of the field
+// is measured from.
+const (
+	// nameFlag marks a name held as an offset into the string table rather
+	// than an ordinal, which icons are not filed under.
+	nameFlag = 0x80000000
+	// directoryFlag marks a row that points at another directory rather
+	// than at the bytes of a resource.
+	directoryFlag = 0x80000000
+)
+
 // entries reads the rows of the resource directory at offset.
 func (res resources) entries(offset uint32) ([]entry, error) {
 	if int(offset)+directoryHeaderSize > len(res.data) {
@@ -188,11 +206,9 @@ func (res resources) entries(offset uint32) ([]entry, error) {
 			target = binary.LittleEndian.Uint32(row[4:8])
 		)
 		out = append(out, entry{
-			// The high bit marks a name held as a string rather than an
-			// ordinal, which icons are not filed under.
-			name:      name &^ 0x80000000,
-			offset:    target &^ 0x80000000,
-			directory: target&0x80000000 != 0,
+			name:      name &^ nameFlag,
+			offset:    target &^ directoryFlag,
+			directory: target&directoryFlag != 0,
 		})
 	}
 	return out, nil

@@ -53,8 +53,8 @@ func Assemble(icons []Icon) ([]byte, error) {
 		out    = make([]byte, 0, table+body)
 		offset = table
 	)
-	out = binary.LittleEndian.AppendUint16(out, 0) // Reserved.
-	out = binary.LittleEndian.AppendUint16(out, 1) // An icon, not a cursor.
+	out = binary.LittleEndian.AppendUint16(out, 0)        // Reserved.
+	out = binary.LittleEndian.AppendUint16(out, kindIcon) // An icon, not a cursor.
 	out = binary.LittleEndian.AppendUint16(out, uint16(len(icons)))
 	for _, icon := range icons {
 		out = append(out, side(icon.Width), side(icon.Height), icon.Colours, 0)

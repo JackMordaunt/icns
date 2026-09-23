@@ -59,8 +59,8 @@ func run() error {
 		"Output path, defaults to the input named with the target's extension.")
 	stringFlag(&outputFormat, "format", "f", "",
 		"Output format: icns, icon, ico, png or jpg. Defaults from the output path.")
-	intFlag(&resize, "resize", "r", 5,
-		"Quality of resize algorithm, 0 to 5 from fastest to slowest.")
+	intFlag(&resize, "resize", "r", maxResizeQuality,
+		fmt.Sprintf("Quality of resize algorithm, 0 to %d from fastest to slowest.", maxResizeQuality))
 	boolFlag(&checkOnly, "check", "c",
 		"Report what the platforms will make of an icon file, and exit.")
 	boolFlag(&showVersion, "version", "v", "Print the version and exit.")
@@ -296,8 +296,8 @@ func sanitiseInputs(
 	if resize < 0 {
 		resize = 0
 	}
-	if resize > 5 {
-		resize = 5
+	if resize > maxResizeQuality {
+		resize = maxResizeQuality
 	}
 	return inputPath, outputPath, icns.InterpolationFunction(resize)
 }
@@ -309,10 +309,20 @@ func changeExtensionTo(path, ext string) string {
 	return filepath.Base(path[:len(path)-len(filepath.Ext(path))] + ext)
 }
 
+const (
+	// maxResizeQuality is the highest value the --resize flag accepts: the
+	// index of the slowest, highest quality interpolation function the
+	// library offers.
+	maxResizeQuality = 5
+	// jpegQuality is the quality JPEG is written at: the maximum, so a
+	// lossy format costs the artwork as little as it can.
+	jpegQuality = 100
+)
+
 type encoderFunc func(io.Writer, image.Image) error
 
 func encodeJPEG(w io.Writer, m image.Image) error {
-	return jpeg.Encode(w, m, &jpeg.Options{Quality: 100})
+	return jpeg.Encode(w, m, &jpeg.Options{Quality: jpegQuality})
 }
 
 var encoders = map[string]encoderFunc{

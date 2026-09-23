@@ -31,6 +31,10 @@ var macPalette4 = [16]color.NRGBA{
 	{0x00, 0x00, 0x00, 0xFF}, // black
 }
 
+// bitsPerByte is the width in bits of the byte a bitmap stores its indices
+// and mask in, which turns a count of bits into a count of bytes.
+const bitsPerByte = 8
+
 // macPalette8 is the 256 colour table: a six level colour cube with black
 // left out, then ten shade ramps of red, green, blue and grey, and black
 // last. White is index 0 and black is index 255.
@@ -80,8 +84,8 @@ func buildPalette8() [256]color.NRGBA {
 func decodeIndexed(data, mask []byte, w, h, bits int) (image.Image, error) {
 	var (
 		pixels = w * h
-		need   = pixels * bits / 8
-		bitmap = pixels / 8
+		need   = pixels * bits / bitsPerByte
+		bitmap = pixels / bitsPerByte
 	)
 	if len(data) < need {
 		return nil, fmt.Errorf("%w: holds %d bytes, want %d for %dx%d at %d bits", ErrMalformed, len(data), need, w, h, bits)

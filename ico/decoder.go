@@ -95,7 +95,7 @@ func directory(r io.Reader) ([]IconDecoder, error) {
 		kind     = binary.LittleEndian.Uint16(data[2:4])
 		count    = int(binary.LittleEndian.Uint16(data[4:6]))
 	)
-	if reserved != 0 || kind != 1 {
+	if reserved != 0 || kind != kindIcon {
 		return nil, ErrInvalidHeader
 	}
 	if count == 0 {
@@ -113,12 +113,12 @@ func directory(r io.Reader) ([]IconDecoder, error) {
 			size   = int(binary.LittleEndian.Uint32(row[8:12]))
 			offset = int(binary.LittleEndian.Uint32(row[12:16]))
 		)
-		// Zero stands for 256, which does not fit in a byte.
+		// Zero stands for the largest side, which does not fit in a byte.
 		if width == 0 {
-			width = 256
+			width = largest
 		}
 		if height == 0 {
-			height = 256
+			height = largest
 		}
 		if size < 0 || offset < 0 || offset+size > len(data) || offset < directorySize {
 			return nil, fmt.Errorf("%w: icon %d lies at %d for %d bytes, outside the file", ErrMalformed, i, offset, size)

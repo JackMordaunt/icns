@@ -25,7 +25,7 @@ func unpackRLE(data []byte, want int) ([]byte, int, error) {
 	for i := 0; i < len(data) && len(out) < want; {
 		lead := int(data[i])
 		i++
-		if lead < 128 {
+		if lead < maxLiteral {
 			n := lead + 1
 			if i+n > len(data) {
 				return nil, i, fmt.Errorf("%w: literal run of %d bytes overruns the element", ErrMalformed, n)
@@ -38,7 +38,7 @@ func unpackRLE(data []byte, want int) ([]byte, int, error) {
 		if i == len(data) {
 			return nil, i, fmt.Errorf("%w: repeat run with no byte to repeat", ErrMalformed)
 		}
-		for n := lead - 125; n > 0; n-- {
+		for n := lead - repeatBias; n > 0; n-- {
 			out = append(out, data[i])
 		}
 		i++
@@ -61,8 +61,8 @@ func packRLE(data []byte) []byte {
 		for i+run < len(data) && run < maxRepeat && data[i+run] == data[i] {
 			run++
 		}
-		if run >= 3 {
-			out = append(out, byte(run+125), data[i])
+		if run >= minRepeat {
+			out = append(out, byte(run+repeatBias), data[i])
 			i += run
 			continue
 		}
@@ -85,10 +85,24 @@ func packRLE(data []byte) []byte {
 }
 
 const (
+	// repeatBias is what a lead byte of 128 or above counts a repeat down
+	// from: a lead of 128 repeats three times, and one of 255 repeats
+	// maxRepeat times.
+	repeatBias = 125
+	// minRepeat is the shortest run worth encoding as a repeat, which
+	// costs two bytes either way.
+	minRepeat = 3
 	// maxLiteral is the longest literal run, from a lead byte of 127.
 	maxLiteral = 128
-	// maxRepeat is the longest repeat, from a lead byte of 255.
-	maxRepeat = 130
+	// maxRepeat is the longest repeat, which a lead byte of 255 counts
+	// down from repeatBias.
+	maxRepeat = 255 - repeatBias
+	// rgbPlanes is the number of colour planes a legacy colour element
+	// stores: red, green and blue, with alpha held in the mask element.
+	rgbPlanes = 3
+	// argbPlanes is the number of planes a legacy ARGB element stores:
+	// alpha first, then red, green and blue.
+	argbPlanes = 4
 )
 
 // padRLE appends a byte to compressed data, which a decoder that drops the
@@ -108,7 +122,7 @@ func padRLE(data []byte, uncompressed int) []byte {
 // colour, so alpha is divided back out.
 func splitPlanes(img image.Image, side int) (planes, mask []byte) {
 	pixels := side * side
-	planes = make([]byte, pixels*3)
+	planes = make([]byte, pixels*rgbPlanes)
 	mask = make([]byte, pixels)
 	origin := img.Bounds().Min
 	for y := range side {
@@ -128,7 +142,7 @@ func splitPlanes(img image.Image, side int) (planes, mask []byte) {
 // follow an ARGB header, alpha first and then the colour channels.
 func decodeARGB(data []byte, side int) (image.Image, error) {
 	pixels := side * side
-	planes, _, err := unpackRLE(data, pixels*4)
+	planes, _, err := unpackRLE(data, pixels*argbPlanes)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +164,7 @@ func decodeARGB(data []byte, side int) (image.Image, error) {
 // opaque, which is how the icons that predate masks are meant to render.
 func decodeRGB(data, mask []byte, side int) (image.Image, error) {
 	pixels := side * side
-	planes, _, err := unpackRLE(data, pixels*3)
+	planes, _, err := unpackRLE(data, pixels*rgbPlanes)
 	if err != nil {
 		return nil, err
 	}

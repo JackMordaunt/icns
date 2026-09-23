@@ -136,12 +136,12 @@ func (e Entry) paddingProblems() []Problem {
 	var (
 		pixels = int(e.Size) * int(e.Size)
 		data   = e.data
-		want   = pixels * 3
+		want   = pixels * rgbPlanes
 	)
 	// it32 is the one colour element that prefixes its planes with four zero
 	// bytes.
-	if e.ID == "it32" && len(data) >= 4 && binary.BigEndian.Uint32(data[:4]) == 0 {
-		data = data[4:]
+	if e.ID == "it32" && len(data) >= it32PrefixSize && binary.BigEndian.Uint32(data[:it32PrefixSize]) == 0 {
+		data = data[it32PrefixSize:]
 	}
 	// Data stored at its exact length is not compressed, so there is no run
 	// for a reader to drop.
