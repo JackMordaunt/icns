@@ -9,3 +9,4 @@
 # lays out, which the exe package is read against.
 !exe/testdata/*.dll
 !exe/testdata/*.exe
+/icnsify
