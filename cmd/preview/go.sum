@@ -17,8 +17,8 @@ github.com/go-text/typesetting v0.3.4 h1:YYurUOtEb9kGSOz4uE3k4OpBGsp1dDL8+fjCeaF
 github.com/go-text/typesetting v0.3.4/go.mod h1:4qZCQphq4KSgGTAeI0uMEkVbROgfah8BuyF5LRYr7XY=
 github.com/go-text/typesetting-utils v0.0.0-20260223113751-2d88ac90dae3 h1:drBZzMgdYPbmyXqOto4YhhJGrFIQCX94FpR4MzTCsos=
 github.com/go-text/typesetting-utils v0.0.0-20260223113751-2d88ac90dae3/go.mod h1:3/62I4La/HBRX9TcTpBj4eipLiwzf+vhI+7whTc9V7o=
-github.com/jackmordaunt/icns/v4 v4.1.0 h1:/6FVSsKZ4ykpDxudq60wZ2XN6EXWHIW1CqOq9ttp57o=
-github.com/jackmordaunt/icns/v4 v4.1.0/go.mod h1:Yffkabiq+b8uEF9gEb7O1D0piOmLlBjbrmrVAGsKa6E=
+github.com/jackmordaunt/icns/v4 v4.2.0 h1:fORGK35pGHWMY6mBvpadfqqNZLPJl3mjofUqAhYHGeo=
+github.com/jackmordaunt/icns/v4 v4.2.0/go.mod h1:Yffkabiq+b8uEF9gEb7O1D0piOmLlBjbrmrVAGsKa6E=
 github.com/josephspurrier/goversioninfo v1.4.0 h1:Puhl12NSHUSALHSuzYwPYQkqa2E1+7SrtAPJorKK0C8=
 github.com/josephspurrier/goversioninfo v1.4.0/go.mod h1:JWzv5rKQr+MmW+LvM412ToT/IkYDZjaclF2pKDss8IY=
 github.com/ncruces/zenity v0.10.10 h1:V/rtAhr5QLdDThahOkm7EYlnw4RuEsf7oN+Xb6lz1j0=
